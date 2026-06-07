@@ -60,7 +60,7 @@ export function LobbyPage() {
     socketService.emitRoomJoin({ roomId: snapshot.roomId, playerId: myPlayerId });
     socketService.emitPlayerReady({ roomId: snapshot.roomId, playerId: myPlayerId });
     setRoom(snapshot);
-    navigate('/table');
+    navigate(`/table/${snapshot.roomId}`);
   }
 
   // ── Create room ────────────────────────────────────────────────────────────

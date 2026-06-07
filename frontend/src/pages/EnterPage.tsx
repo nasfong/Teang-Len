@@ -10,7 +10,7 @@ const generateDefaultName = (): string => {
   return `${prefix}_${pin}`;
 };
 
-export function LoginPage() {
+export function EnterPage() {
   const { playerId, setPlayer } = useLobbyStore();
   const navigate = useNavigate();
 
@@ -18,7 +18,7 @@ export function LoginPage() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Already identified — skip login
+  // Session already exists (localStorage) — skip to lobby
   if (playerId) return <Navigate to="/lobby" replace />;
 
   async function handleSubmit(e: React.FormEvent) {

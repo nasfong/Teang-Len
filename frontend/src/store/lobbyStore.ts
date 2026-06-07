@@ -1,35 +1,18 @@
 import { create } from 'zustand';
 import type { RoomSnapshot } from '../services/api';
 
+const LS_ID   = 'tl_playerId';
+const LS_NAME = 'tl_playerName';
+
 // ─── Store interface ──────────────────────────────────────────────────────────
 
 interface LobbyStore {
-  /** Backend UUID assigned by POST /api/players/guest */
-  playerId: string | null;
+  playerId:   string | null;
   playerName: string | null;
-
-  /** Backend UUID assigned by POST /api/rooms or POST /api/rooms/:id/join */
-  roomId: string | null;
-
-  /** Latest RoomSnapshot from room:update or REST response */
-  room: RoomSnapshot | null;
-
-  /**
-   * Maps engine seat index (0–3) → backend playerId UUID.
-   * Required to build game:play rankings payload:
-   *   rankings: { playerId: UUID, rank: number }[]
-   * Rebuilt whenever setRoom() is called.
-   */
+  roomId:     string | null;
+  room:       RoomSnapshot | null;
   seatToPlayerId: Record<number, string>;
-
-  /**
-   * The local player's seat index (0–3) within the room.
-   * Engine seat i === backend seatIndex i.
-   * Used by GamePage to rotate the table so local player is always at bottom.
-   */
   localSeatIndex: number | null;
-
-  // ── Actions ────────────────────────────────────────────────────────────────
 
   setPlayer(playerId: string, name: string): void;
   setRoom(room: RoomSnapshot): void;
@@ -38,16 +21,21 @@ interface LobbyStore {
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
+// playerId + playerName are seeded from localStorage on first render.
+// This means RequireAuth guards pass immediately on refresh without a
+// bootstrap effect — no flash of the login page.
 
 export const useLobbyStore = create<LobbyStore>((set, get) => ({
-  playerId: null,
-  playerName: null,
-  roomId: null,
-  room: null,
+  playerId:       localStorage.getItem(LS_ID),
+  playerName:     localStorage.getItem(LS_NAME),
+  roomId:         null,
+  room:           null,
   seatToPlayerId: {},
   localSeatIndex: null,
 
   setPlayer(playerId, name) {
+    localStorage.setItem(LS_ID, playerId);
+    localStorage.setItem(LS_NAME, name);
     set({ playerId, playerName: name });
   },
 
@@ -71,11 +59,13 @@ export const useLobbyStore = create<LobbyStore>((set, get) => ({
   },
 
   reset() {
+    localStorage.removeItem(LS_ID);
+    localStorage.removeItem(LS_NAME);
     set({
-      playerId: null,
-      playerName: null,
-      room: null,
-      roomId: null,
+      playerId:       null,
+      playerName:     null,
+      room:           null,
+      roomId:         null,
       seatToPlayerId: {},
       localSeatIndex: null,
     });

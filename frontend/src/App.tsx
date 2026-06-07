@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
-import { LoginPage } from './pages/LoginPage';
+import { EnterPage } from './pages/EnterPage';
 import { LobbyPage } from './pages/LobbyPage';
 import { TablePage } from './pages/TablePage';
 import { useLobbyStore } from './store/lobbyStore';
@@ -12,18 +12,18 @@ import './styles.css';
 
 // ── Route guards ──────────────────────────────────────────────────────────────
 
+// lobbyStore is seeded from localStorage at module init, so this guard passes
+// immediately on refresh without any async bootstrap step.
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const playerId = useLobbyStore(s => s.playerId);
-  if (!playerId) return <Navigate to="/login" replace />;
+  if (!playerId) return <Navigate to="/enter" replace />;
   return <>{children}</>;
 }
 
-function RequireRoom({ children }: { children: React.ReactNode }) {
+// Smart catch-all: send existing sessions to /lobby, new visitors to /enter.
+function CatchAll() {
   const playerId = useLobbyStore(s => s.playerId);
-  const roomId   = useLobbyStore(s => s.roomId);
-  if (!playerId) return <Navigate to="/login" replace />;
-  if (!roomId)   return <Navigate to="/lobby" replace />;
-  return <>{children}</>;
+  return <Navigate to={playerId ? '/lobby' : '/enter'} replace />;
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
@@ -40,7 +40,7 @@ export default function App() {
     socket.on(
       SERVER_EVENTS.GAME_UPDATE,
       ({ gameState, triggeredBy }: { gameState: GameState; triggeredBy: string; version: number }) => {
-        if (triggeredBy === playerId) return; // skip own broadcast
+        if (triggeredBy === playerId) return;
         syncFromServer(gameState);
       },
     );
@@ -57,11 +57,11 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
+      <Route path="/enter" element={<EnterPage />} />
       <Route path="/lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
-      <Route path="/table" element={<RequireRoom><TablePage /></RequireRoom>} />
-      {/* Default: send to login; guard will redirect forward if already authed */}
-      <Route path="*" element={<Navigate to="/login" replace />} />
+      {/* roomId in URL enables refresh recovery — TablePage self-hydrates */}
+      <Route path="/table/:roomId" element={<RequireAuth><TablePage /></RequireAuth>} />
+      <Route path="*" element={<CatchAll />} />
     </Routes>
   );
 }

@@ -1,16 +1,17 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { useGameStore } from '../store/gameStore';
 import { useLobbyStore } from '../store/lobbyStore';
 import { socketService } from '../services/socket';
+import { api } from '../services/api';
 import { PlayerZone } from '../components/PlayerZone';
 import { TrickArea } from '../components/TrickArea';
 import { ActionBar } from '../components/ActionBar';
 import { GameLog } from '../components/GameLog';
-import type { PlayerId } from '../game/types';
+import type { PlayerId, GameState } from '../game/types';
 
 const RANK_MEDALS = ['🥇', '🥈', '🥉', '🏅'];
 
-// Maps seat offset from local player → position label
 const POSITION_LABELS = ['Bottom', 'Right', 'Top', 'Left'] as const;
 
 function seatPositionLabel(seatIdx: number, localSeat: number): string {
@@ -18,13 +19,44 @@ function seatPositionLabel(seatIdx: number, localSeat: number): string {
 }
 
 export function TablePage() {
+  const { roomId: roomIdParam } = useParams<{ roomId: string }>();
+  const navigate = useNavigate();
+
   const {
     game, error, selectedCardIds,
     selectCard, playSelectedCards, skipCurrentTurn,
-    clearError, resetGame, startGame,
+    clearError, resetGame, startGame, syncFromServer,
   } = useGameStore();
 
-  const { playerId, roomId, room, localSeatIndex } = useLobbyStore();
+  const { playerId, room, localSeatIndex, setRoom } = useLobbyStore();
+
+  const [hydrating, setHydrating] = useState(false);
+  const [hydrateError, setHydrateError] = useState<string | null>(null);
+
+  // ── Refresh recovery ──────────────────────────────────────────────────────
+  // When room is null (page was refreshed): fetch room snapshot, rejoin socket,
+  // and restore game state if a game was in progress.
+  useEffect(() => {
+    if (!roomIdParam || !playerId || room) return; // already hydrated
+
+    setHydrating(true);
+    api.getRoom(roomIdParam)
+      .then(snapshot => {
+        setRoom(snapshot);
+        socketService.emitRoomJoin({ roomId: roomIdParam, playerId });
+        socketService.emitPlayerReady({ roomId: roomIdParam, playerId });
+        if (snapshot.gameState) {
+          syncFromServer(snapshot.gameState as GameState);
+        }
+      })
+      .catch(() => {
+        // Room is gone — go back to lobby
+        setHydrateError('Room not found. Redirecting…');
+        setTimeout(() => navigate('/lobby'), 1500);
+      })
+      .finally(() => setHydrating(false));
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [roomIdParam, playerId]); // intentionally omits room — only runs until hydrated
 
   useEffect(() => {
     if (!error) return;
@@ -32,15 +64,45 @@ export function TablePage() {
     return () => clearTimeout(t);
   }, [error, clearError]);
 
-  const isHost = room?.hostPlayerId === playerId;
-  const playerCount = room?.players.length ?? 0;
+  // ── Shared actions ────────────────────────────────────────────────────────
 
   function handleLeave() {
-    if (roomId && playerId) {
-      socketService.emitRoomLeave({ roomId, playerId });
+    if (roomIdParam && playerId) {
+      socketService.emitRoomLeave({ roomId: roomIdParam, playerId });
     }
-    resetGame(); // clears game + calls clearRoom() → App routes back to LobbyPage
+    resetGame();
+    navigate('/lobby');
   }
+
+  function handleBackToLobby() {
+    resetGame();
+    navigate('/lobby');
+  }
+
+  // ── Loading / error during refresh recovery ───────────────────────────────
+
+  if (hydrating || (!room && !hydrateError)) {
+    return (
+      <div className="screen screen--start">
+        <div className="hero">
+          <p style={{ opacity: 0.5, fontSize: 14 }}>Reconnecting…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (hydrateError) {
+    return (
+      <div className="screen screen--start">
+        <div className="hero">
+          <p style={{ color: '#f87171', fontSize: 14 }}>{hydrateError}</p>
+        </div>
+      </div>
+    );
+  }
+
+  const isHost = room?.hostPlayerId === playerId;
+  const playerCount = room?.players.length ?? 0;
 
   // ── Waiting state (pre-game) ──────────────────────────────────────────────
 
@@ -51,7 +113,7 @@ export function TablePage() {
           <div className="hero__suits">♠ ♣ ♦ ♥</div>
           <h1 className="hero__title">Table</h1>
           <p style={{ fontSize: 11, opacity: 0.4, marginBottom: 16, letterSpacing: 1 }}>
-            {roomId?.slice(0, 8).toUpperCase()}
+            {roomIdParam?.slice(0, 8).toUpperCase()}
           </p>
 
           <div style={{ width: '100%', marginBottom: 20 }}>
@@ -152,7 +214,7 @@ export function TablePage() {
               </div>
             ))}
           </div>
-          <button className="btn btn--deal" onClick={resetGame}>Back to Lobby</button>
+          <button className="btn btn--deal" onClick={handleBackToLobby}>Back to Lobby</button>
         </div>
       </div>
     );
