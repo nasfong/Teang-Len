@@ -18,8 +18,7 @@ export function EnterPage() {
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
-  // Session already exists (localStorage) — skip to lobby
-  if (playerId) return <Navigate to="/lobby" replace />;
+  if (playerId) return <Navigate to="/room" replace />;
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -30,7 +29,7 @@ export function EnterPage() {
     try {
       const player = await api.createGuest(name);
       setPlayer(player.playerId, player.name);
-      navigate('/lobby');
+      navigate('/room');
     } catch (e: unknown) {
       setErr(e instanceof Error ? e.message : 'Failed to create player');
     } finally {

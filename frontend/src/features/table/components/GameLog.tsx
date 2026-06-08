@@ -20,7 +20,7 @@ export function GameLog({ entries }: GameLogProps) {
       <div className="game-log__scroll">
         {entries.map((entry, i) => {
           const isRecent = i === entries.length - 1;
-          const isBomb = entry.includes('QUAD') || entry.includes('bomb');
+          const isBomb   = entry.includes('QUAD') || entry.includes('bomb');
           const isFinish = entry.includes('position #');
           return (
             <div
@@ -28,7 +28,7 @@ export function GameLog({ entries }: GameLogProps) {
               className={[
                 'log-entry',
                 isRecent ? 'log-entry--recent' : '',
-                isBomb ? 'log-entry--bomb' : '',
+                isBomb   ? 'log-entry--bomb'   : '',
                 isFinish ? 'log-entry--finish' : '',
               ].filter(Boolean).join(' ')}
             >

@@ -1,6 +1,6 @@
 import { rules } from '../rules/rules';
 import { compareCards, rankIndex, suitIndex, isTwo, sortCards } from './cards';
-import type { Card, Hand } from '../types';
+import type { Card, Hand, Rank } from '../types';
 
 // ─── CLASSIFIERS ─────────────────────────────────────────────────────────────
 
@@ -48,6 +48,32 @@ function isFlushStraight(cards: Card[]): boolean {
 }
 
 /**
+ * Full house (Fulu): exactly 5 cards — one triple + one pair.
+ * Comparison is triple-rank first, pair-rank second.
+ */
+function isFullHouse(cards: Card[]): boolean {
+  if (!rules.features.allowFulu) return false;
+  if (cards.length !== 5) return false;
+  const counts = new Map<string, number>();
+  for (const c of cards) counts.set(c.rank, (counts.get(c.rank) ?? 0) + 1);
+  const groups = Array.from(counts.values()).sort((a, b) => a - b);
+  return groups.length === 2 && groups[0] === 2 && groups[1] === 3;
+}
+
+/** Extract the triple/pair ranks from a confirmed full_house Hand */
+function getFullHouseRanks(hand: Hand): { tripleRank: Rank; pairRank: Rank } {
+  const counts = new Map<Rank, number>();
+  for (const c of hand.cards) counts.set(c.rank, (counts.get(c.rank) ?? 0) + 1);
+  let tripleRank = hand.cards[0].rank; // safe fallback — never reached on valid full_house
+  let pairRank   = hand.cards[0].rank;
+  for (const [rank, count] of counts) {
+    if (count === 3) tripleRank = rank;
+    else             pairRank   = rank;
+  }
+  return { tripleRank, pairRank };
+}
+
+/**
  * Double sequence: minimum 2 consecutive pairs.
  * Cards must come in pairs of matching rank, consecutive ranks.
  * 2 is forbidden.
@@ -86,10 +112,11 @@ export function classifyHand(cards: Card[]): Hand | null {
 
   const sorted = sortCards(cards);
 
-  if (isFlushStraight(sorted)) return { type: 'flush_straight', cards: sorted };
-  if (isQuad(sorted)) return { type: 'quad', cards: sorted };
+  if (isFlushStraight(sorted))  return { type: 'flush_straight',  cards: sorted };
+  if (isQuad(sorted))           return { type: 'quad',            cards: sorted };
   if (isDoubleSequence(sorted)) return { type: 'double_sequence', cards: sorted };
-  if (isStraight(sorted)) return { type: 'straight', cards: sorted };
+  if (isFullHouse(sorted))      return { type: 'full_house',      cards: sorted };
+  if (isStraight(sorted))       return { type: 'straight',        cards: sorted };
   if (isTriple(sorted)) return { type: 'triple', cards: sorted };
   if (isPair(sorted)) return { type: 'pair', cards: sorted };
   if (isSingle(sorted)) return { type: 'single', cards: sorted };
@@ -112,28 +139,31 @@ function topCard(hand: Hand): Card {
  * Bomb rules: quad cuts single-2, double_sequence(4-pair) cuts pair-2.
  */
 function isBombPlay(challenger: Hand, current: Hand): boolean {
-  if (!rules.bombs.quadCutsSingleTwo && !rules.bombs.fourPairsCutsPairTwo) return false;
-
-  // Quad vs single 2
+  // Square (quad) bomb: cuts single 2
   if (
-    rules.bombs.quadCutsSingleTwo &&
+    rules.features.allowSquareBomb &&
     challenger.type === 'quad' &&
     current.type === 'single' &&
     isTwo(topCard(current))
-  ) {
-    return true;
-  }
+  ) return true;
+
+  // Flush straight (exactly 5 cards, same suit) bomb: cuts single 2
+  if (
+    rules.features.allowFlushStraightBomb &&
+    challenger.type === 'flush_straight' &&
+    challenger.cards.length === 5 &&
+    current.type === 'single' &&
+    isTwo(topCard(current))
+  ) return true;
 
   // 4 consecutive pairs vs pair of 2s
   if (
-    rules.bombs.fourPairsCutsPairTwo &&
+    rules.features.allowFourPairBomb &&
     challenger.type === 'double_sequence' &&
-    challenger.cards.length >= 8 && // 4 pairs = 8 cards
+    challenger.cards.length >= 8 &&
     current.type === 'pair' &&
     current.cards.every(isTwo)
-  ) {
-    return true;
-  }
+  ) return true;
 
   return false;
 }
@@ -171,6 +201,15 @@ export function canBeat(challenger: Hand, current: Hand): boolean {
     current.type === 'straight'
   ) {
     return true;
+  }
+
+  // Full house (Fulu): triple rank wins; pair rank breaks ties
+  if (challenger.type === 'full_house' && current.type === 'full_house') {
+    const ch = getFullHouseRanks(challenger);
+    const cu = getFullHouseRanks(current);
+    const tripleDiff = rankIndex(ch.tripleRank) - rankIndex(cu.tripleRank);
+    if (tripleDiff !== 0) return tripleDiff > 0;
+    return rankIndex(ch.pairRank) > rankIndex(cu.pairRank);
   }
 
   // Compare top cards

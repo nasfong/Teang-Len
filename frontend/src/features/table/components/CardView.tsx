@@ -1,4 +1,4 @@
-import type { Card } from '../game/types';
+import type { Card } from '../../../game/types';
 
 interface CardViewProps {
   card: Card;
@@ -41,21 +41,15 @@ export function CardView({ card, selected, faceDown, onClick, small, dimmed }: C
       ].filter(Boolean).join(' ')}
       onClick={() => onClick?.(card)}
     >
-      {/* Top-left pip */}
       <div className="card__corner card__corner--tl">
         <span className="card__rank">{card.rank}</span>
         <span className="card__suit-sm">{SUIT_SYMBOL[card.suit]}</span>
       </div>
-
-      {/* Center suit */}
       <div className="card__center">{SUIT_SYMBOL[card.suit]}</div>
-
-      {/* Bottom-right pip (rotated) */}
       <div className="card__corner card__corner--br">
         <span className="card__rank">{card.rank}</span>
         <span className="card__suit-sm">{SUIT_SYMBOL[card.suit]}</span>
       </div>
-
       {selected && <div className="card__selected-glow" />}
     </div>
   );

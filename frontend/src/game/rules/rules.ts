@@ -1,4 +1,4 @@
-import type { Rank, Suit, HandType } from '../types';
+import type { Rank, Suit } from '../types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ALL GAME RULES ARE DEFINED HERE — NO RULE LOGIC LIVES ANYWHERE ELSE
@@ -51,15 +51,6 @@ export const rules = {
     double_sequence: { min: 4 }, // min 2 consecutive pairs = 4 cards
   } as const,
 
-  // ── Bomb (Cut) Rules ─────────────────────────────────────────────────────────
-  bombs: {
-    // Quad cuts a single 2 only
-    quadCutsSingleTwo: true,
-    // 4 consecutive pairs (double_sequence of length 4) cuts pair of 2 only
-    fourPairsCutsPairTwo: true,
-    // Triple 2 is immune to all bombs
-    tripleUnbeatable: true,
-  },
 
   // ── Straight Rules ───────────────────────────────────────────────────────────
   straights: {
@@ -83,10 +74,22 @@ export const rules = {
     continueUntilAllRanked: true,
   },
 
-  // ── Valid bomb targets ────────────────────────────────────────────────────────
-  // Maps: bomb hand type → the hand type it is allowed to cut
-  bombTargets: {
-    quad: 'single' as HandType,           // quad cuts single (only if single is a 2)
-    double_sequence: 'pair' as HandType,  // 4-pair sequence cuts pair (only if pair is 2s)
+  // ── Feature Flags ────────────────────────────────────────────────────────────
+  // All values typed as boolean (not literal) so they can be toggled in tests at runtime.
+  // This is the single source of truth for optional/house-rule behaviour.
+  features: {
+    // Fulu (Full House): triple + pair of exactly 5 cards.
+    // Beats only another Fulu; triple rank is primary, pair rank secondary.
+    allowFulu: true as boolean,
+
+    // Square bomb: quad (4-of-a-kind) cuts a single 2.
+    allowSquareBomb: true as boolean,
+
+    // Flush straight bomb: exactly 5 same-suit consecutive cards cuts a single 2.
+    allowFlushStraightBomb: true as boolean,
+
+    // Four-pair bomb: 4 consecutive pairs (8 cards) cuts a pair of 2s.
+    allowFourPairBomb: true as boolean,
   },
+
 } as const;

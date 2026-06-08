@@ -31,11 +31,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   startGame() {
     const { roomId, playerId, seatToPlayerId, room } = useLobbyStore.getState();
-    let game = dealGame();
+    const numPlayers = room?.maxPlayers ?? 4;
 
-    // Patch engine player names from room seat order.
-    // Convention: engine seat i === backend seatIndex i.
-    // Engine is not modified — only the returned state is spread.
+    // Pre-seed names from room seat order so the engine log uses real names.
+    // Seats may not all be filled yet if maxPlayers > connected players,
+    // but the patch below overwrites with confirmed names anyway.
+    const seededNames = Array.from({ length: numPlayers }, (_, i) => {
+      const backendId = seatToPlayerId[i];
+      return room?.players.find(rp => rp.playerId === backendId)?.name ?? `Seat ${i}`;
+    });
+
+    let game = dealGame(numPlayers, seededNames);
+
+    // Final patch: re-confirm names from room in case seatToPlayerId wasn't
+    // fully populated when seededNames was built.
     if (room) {
       const patchedPlayers = game.players.map(p => {
         const backendId = seatToPlayerId[p.id];

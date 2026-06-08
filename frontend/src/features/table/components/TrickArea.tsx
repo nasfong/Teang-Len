@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import type { Trick } from '../game/types';
+import type { Trick } from '../../../game/types';
 import { CardView } from './CardView';
 
 interface TrickAreaProps {
@@ -8,27 +8,26 @@ interface TrickAreaProps {
 }
 
 const TYPE_LABEL: Record<string, string> = {
-  single: 'SINGLE',
-  pair: 'PAIR',
-  triple: 'TRIPLE',
-  straight: 'STRAIGHT',
-  flush_straight: 'FLUSH STRAIGHT',
+  single:          'SINGLE',
+  pair:            'PAIR',
+  triple:          'TRIPLE',
+  full_house:      'Fulu',
+  straight:        'STRAIGHT',
+  flush_straight:  'FLUSH STRAIGHT',
   double_sequence: 'DOUBLE SEQ',
-  quad: '💣 QUAD',
+  quad:            '💣 QUAD',
 };
 
 export function TrickArea({ trick, playerNames }: TrickAreaProps) {
-  // Track previous trick to detect trick-end clear (plays go from N→0)
   const prevPlaysCount = useRef(trick.plays.length);
-  const [clearing, setClearing] = useState(false);
+  const [clearing, setClearing]           = useState(false);
   const [displayedTrick, setDisplayedTrick] = useState(trick);
 
   useEffect(() => {
     const wasPopulated = prevPlaysCount.current > 0;
-    const isNowEmpty = trick.plays.length === 0;
+    const isNowEmpty   = trick.plays.length === 0;
 
     if (wasPopulated && isNowEmpty) {
-      // Trick just cleared — animate out, then swap
       setClearing(true);
       const t = setTimeout(() => {
         setDisplayedTrick(trick);
@@ -42,20 +41,17 @@ export function TrickArea({ trick, playerNames }: TrickAreaProps) {
     if (!clearing) setDisplayedTrick(trick);
   }, [trick]);
 
-  const shown = clearing ? displayedTrick : trick;
+  const shown    = clearing ? displayedTrick : trick;
   const lastPlay = shown.plays[shown.plays.length - 1] ?? null;
   const handType = shown.currentHand?.type;
-
-  const isEmpty = shown.plays.length === 0;
+  const isEmpty  = shown.plays.length === 0;
 
   return (
     <div className="trick-area">
-      {/* Type badge */}
       <div className={`trick-badge${handType ? ' trick-badge--visible' : ''}`}>
         {handType ? TYPE_LABEL[handType] ?? handType : ''}
       </div>
 
-      {/* Card display */}
       <div className={`trick-cards${clearing ? ' trick-cards--clearing' : ''}${isEmpty ? ' trick-cards--empty' : ''}`}>
         {isEmpty ? (
           <div className="trick-empty">

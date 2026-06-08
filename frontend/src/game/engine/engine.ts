@@ -19,11 +19,12 @@ function playerName(state: GameState, id: PlayerId): string {
 
 /** Returns the next PlayerId in clockwise order who is still playing */
 function nextActivePlayer(state: GameState, from: PlayerId): PlayerId {
-  let id = ((from + 1) % rules.deck.playerCount) as PlayerId;
-  for (let i = 0; i < rules.deck.playerCount; i++) {
+  const n = state.players.length;
+  let id = ((from + 1) % n) as PlayerId;
+  for (let i = 0; i < n; i++) {
     const p = state.players[id];
     if (p.rank === null) return id;
-    id = ((id + 1) % rules.deck.playerCount) as PlayerId;
+    id = ((id + 1) % n) as PlayerId;
   }
   return from; // fallback (shouldn't happen if game isn't over)
 }
@@ -47,18 +48,22 @@ function removeCardsFromHand(hand: Card[], played: Card[]): Card[] {
 
 // ─── DEAL (CORRECTED — tracks 3♠ before stripping) ──────────────────────────
 
-export function dealGame(): GameState {
+const FALLBACK_NAMES = ['You', 'West', 'North', 'East'];
+
+export function dealGame(numPlayers: number = 4, playerNames?: string[]): GameState {
   const deck = shuffleDeck(makeDeck());
   const n = rules.deck.cardsPerPlayer;
-  const names = ['You', 'West', 'North', 'East'];
+  const names = playerNames ?? FALLBACK_NAMES;
 
-  // Initial deal
-  const rawHands: Card[][] = [0, 1, 2, 3].map(i => deck.slice(i * n, (i + 1) * n));
+  // Deal only to the active seats; remaining cards are unplayed
+  const rawHands: Card[][] = Array.from({ length: numPlayers }, (_, i) =>
+    deck.slice(i * n, (i + 1) * n),
+  );
 
-  // Find who had 3♠
+  // Find who had 3♠ among dealt players; default to seat 0 if undealt
   let starterId = 0 as PlayerId;
   if (rules.threes.starterHoldsThreeOfSpades) {
-    for (let i = 0; i < 4; i++) {
+    for (let i = 0; i < numPlayers; i++) {
       if (rawHands[i].some(c => c.rank === '3' && c.suit === '♠')) {
         starterId = i as PlayerId;
         break;
@@ -72,9 +77,9 @@ export function dealGame(): GameState {
     const threes = hand.filter(isThree);
     const stripped = hand.filter(c => !isThree(c));
     if (threes.length > 0) {
-      logLines.push(`${names[i]} discards 3s: ${threes.map(c => c.id).join(' ')}`);
+      logLines.push(`${names[i] ?? FALLBACK_NAMES[i]} discards 3s: ${threes.map(c => c.id).join(' ')}`);
     }
-    return makePlayer(i as PlayerId, names[i], stripped);
+    return makePlayer(i as PlayerId, names[i] ?? FALLBACK_NAMES[i], stripped);
   });
 
   logLines.push(`${players[starterId].name} starts (held 3♠).`);
@@ -146,7 +151,7 @@ export function playCards(state: GameState, cardIds: string[]): EngineResult {
   }
 
   // Check game over
-  if (newState.rankedOrder.length === rules.deck.playerCount) {
+  if (newState.rankedOrder.length === newState.players.length) {
     return { state: { ...newState, phase: 'game_over' } };
   }
 
@@ -229,7 +234,7 @@ function advanceTurn(state: GameState): GameState {
 
   // Skip over players who have already skipped this trick
   let loops = 0;
-  while (state.players[next].skipped && loops < rules.deck.playerCount) {
+  while (state.players[next].skipped && loops < state.players.length) {
     next = nextActivePlayer(state, next);
     loops++;
   }
@@ -331,5 +336,5 @@ function getSubsets(hand: Card[], size: number): Card[][] {
 // ─── GAME-OVER CHECK ─────────────────────────────────────────────────────────
 
 export function isGameOver(state: GameState): boolean {
-  return state.rankedOrder.length >= rules.deck.playerCount;
+  return state.rankedOrder.length >= state.players.length;
 }

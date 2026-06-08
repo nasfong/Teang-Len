@@ -15,6 +15,7 @@ export type HandType =
   | 'single'
   | 'pair'
   | 'triple'
+  | 'full_house'
   | 'straight'
   | 'flush_straight'
   | 'double_sequence'

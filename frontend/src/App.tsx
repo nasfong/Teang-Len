@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import { Routes, Route, Navigate } from 'react-router-dom';
 import { EnterPage } from './pages/EnterPage';
-import { LobbyPage } from './pages/LobbyPage';
+import { RoomPage } from './pages/RoomPage';
 import { TablePage } from './pages/TablePage';
 import { useLobbyStore } from './store/lobbyStore';
 import { useGameStore } from './store/gameStore';
@@ -20,10 +20,10 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
-// Smart catch-all: send existing sessions to /lobby, new visitors to /enter.
+// Smart catch-all: authenticated users go to /room, new visitors to /enter.
 function CatchAll() {
   const playerId = useLobbyStore(s => s.playerId);
-  return <Navigate to={playerId ? '/lobby' : '/enter'} replace />;
+  return <Navigate to={playerId ? '/room' : '/enter'} replace />;
 }
 
 // ── App ───────────────────────────────────────────────────────────────────────
@@ -58,8 +58,10 @@ export default function App() {
   return (
     <Routes>
       <Route path="/enter" element={<EnterPage />} />
-      <Route path="/lobby" element={<RequireAuth><LobbyPage /></RequireAuth>} />
-      {/* roomId in URL enables refresh recovery — TablePage self-hydrates */}
+      <Route path="/room" element={<RequireAuth><RoomPage /></RequireAuth>} />
+      {/* /table (no roomId) redirects to /room */}
+      <Route path="/table" element={<Navigate to="/room" replace />} />
+      {/* /table/:roomId — waiting / playing / finished */}
       <Route path="/table/:roomId" element={<RequireAuth><TablePage /></RequireAuth>} />
       <Route path="*" element={<CatchAll />} />
     </Routes>

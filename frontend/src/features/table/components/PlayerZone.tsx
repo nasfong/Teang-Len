@@ -1,6 +1,5 @@
 import React from 'react';
-
-import type { Player } from '../game/types';
+import type { Player, Card } from '../../../game/types';
 import { CardView } from './CardView';
 
 interface PlayerZoneProps {
@@ -36,7 +35,6 @@ export function PlayerZone({
         player.skipped ? 'pzone--skipped' : '',
       ].filter(Boolean).join(' ')}
     >
-      {/* Info panel */}
       <div className="pzone__info">
         <div className="pzone__avatar">
           {isHuman ? '🧑' : player.name[0].toUpperCase()}
@@ -57,7 +55,6 @@ export function PlayerZone({
         )}
       </div>
 
-      {/* Card fan */}
       {isHuman ? (
         <HumanHand
           cards={player.hand}
@@ -71,17 +68,14 @@ export function PlayerZone({
   );
 }
 
-// ── Human hand — fan layout ──────────────────────────────────────────────────
-
 interface HumanHandProps {
-  cards: { id: string; rank: string; suit: string }[];
+  cards: Card[];
   selectedCardIds: string[];
   onCardClick?: (cardId: string) => void;
 }
 
 function HumanHand({ cards, selectedCardIds, onCardClick }: HumanHandProps) {
   const total = cards.length;
-  // Fan: cards overlap; max fan width is capped to avoid overflow
   const overlapPx = Math.max(18, Math.min(38, Math.floor(340 / Math.max(total, 1))));
 
   return (
@@ -96,7 +90,7 @@ function HumanHand({ cards, selectedCardIds, onCardClick }: HumanHandProps) {
               style={{ left: `${i * overlapPx}px` }}
             >
               <CardView
-                card={card as any}
+                card={card}
                 selected={selected}
                 onClick={() => onCardClick?.(card.id)}
               />
@@ -107,8 +101,6 @@ function HumanHand({ cards, selectedCardIds, onCardClick }: HumanHandProps) {
     </div>
   );
 }
-
-// ── Opponent hand — compact face-down row ────────────────────────────────────
 
 function OpponentHand({ count, isVertical, isActive }: { count: number; isVertical: boolean; isActive: boolean }) {
   const show = Math.min(count, 10);
