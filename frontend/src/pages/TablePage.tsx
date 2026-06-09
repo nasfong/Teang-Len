@@ -12,7 +12,11 @@ import { TrickArea } from '../features/table/components/TrickArea';
 import { ActionBar } from '../features/table/components/ActionBar';
 import { GameLog } from '../features/table/components/GameLog';
 import { PlaceholderSeat } from '../features/table/components/PlaceholderSeat';
+import { TableHUD } from '../features/table/components/TableHUD';
+import { isGameLogEnabled } from '../game/rules/rules';
+import { validatePlay } from '../game/engine/validation';
 import type { PlayerId } from '../game/types';
+import type { PlayValidation } from '../game/engine/validation';
 
 export function TablePage() {
   const { roomId: roomIdParam } = useParams<{ roomId?: string }>();
@@ -24,10 +28,12 @@ export function TablePage() {
     clearError, resetGame, startGame,
   } = useGameStore();
 
-  const { playerId, room, localSeatIndex } = useLobbyStore();
+  const { playerId, playerName, room, localSeatIndex } = useLobbyStore();
 
-  const { hydrateError }                        = useTableHydration(roomIdParam);
-  const { seatBottom, seatRight, seatTop, seatLeft } = useSeatMapping(localSeatIndex);
+  const { hydrateError } = useTableHydration(roomIdParam);
+
+  const numPlayers = game ? game.players.length : (room?.maxPlayers ?? 4);
+  const { seatBottom, seatRight, seatTop, seatLeft } = useSeatMapping(localSeatIndex, numPlayers);
 
   useEffect(() => {
     if (!error) return;
@@ -100,51 +106,57 @@ export function TablePage() {
 
   // ── State C — Playing ──────────────────────────────────────────────────────
 
-  const isRealSeat        = (idx: PlayerId): boolean => (idx as number) < maxSeats;
   const isPlayerTurn      = game.currentPlayer === seatBottom;
   const canSkip           = game.currentTrick.currentHand !== null;
   const currentPlayerName = game.players[game.currentPlayer].name;
   const playerNames       = game.players.map(p => p.name);
 
+  const selectedCards = game.players[seatBottom].hand.filter(c => selectedCardIds.includes(c.id));
+  const playValidation: PlayValidation = isPlayerTurn
+    ? validatePlay(selectedCards, game.currentTrick.currentHand)
+    : { canPlay: false, reason: '' };
+
+  function renderOpponent(seat: PlayerId | null, position: 'top' | 'left' | 'right') {
+    if (seat === null) return <PlaceholderSeat />;
+    return (
+      <PlayerZone
+        player={game!.players[seat]}
+        isCurrentTurn={game!.currentPlayer === seat}
+        isHuman={false}
+        position={position}
+      />
+    );
+  }
+
+  const tableClass = numPlayers === 2 ? 'table table--two-player' : 'table';
+
   return (
-    <div className="game-root">
+    <div className={isGameLogEnabled() ? 'game-root game-root--log' : 'game-root'}>
       {error && (
         <div className="toast toast--error" onClick={clearError}>
           ⚠ {error}
         </div>
       )}
 
-      <div className="turn-pill">
-        <span className="turn-pill__dot" />
-        {currentPlayerName}'s turn
-      </div>
+      <div className={tableClass}>
 
-      <div className="table">
+        {/* HUD — replaces old RoomHeader + turn-pill overlays */}
+        <div className="table__hud">
+          <TableHUD
+            playerName={playerName}
+            roomId={roomIdParam}
+            playerCount={game.players.length}
+            maxSeats={maxSeats}
+          />
+        </div>
+
         <div className="table__top">
-          {isRealSeat(seatTop) ? (
-            <PlayerZone
-              player={game.players[seatTop]}
-              isCurrentTurn={game.currentPlayer === seatTop}
-              isHuman={false}
-              position="top"
-            />
-          ) : (
-            <PlaceholderSeat />
-          )}
+          {renderOpponent(seatTop, 'top')}
         </div>
 
         <div className="table__middle">
           <div className="table__side table__side--left">
-            {isRealSeat(seatLeft) ? (
-              <PlayerZone
-                player={game.players[seatLeft]}
-                isCurrentTurn={game.currentPlayer === seatLeft}
-                isHuman={false}
-                position="left"
-              />
-            ) : (
-              <PlaceholderSeat />
-            )}
+            {renderOpponent(seatLeft, 'left')}
           </div>
 
           <div className="table__center">
@@ -152,16 +164,7 @@ export function TablePage() {
           </div>
 
           <div className="table__side table__side--right">
-            {isRealSeat(seatRight) ? (
-              <PlayerZone
-                player={game.players[seatRight]}
-                isCurrentTurn={game.currentPlayer === seatRight}
-                isHuman={false}
-                position="right"
-              />
-            ) : (
-              <PlaceholderSeat />
-            )}
+            {renderOpponent(seatRight, 'right')}
           </div>
         </div>
 
@@ -173,6 +176,7 @@ export function TablePage() {
             onPlay={playSelectedCards}
             onSkip={skipCurrentTurn}
             currentPlayerName={currentPlayerName}
+            playValidation={playValidation}
           />
           <PlayerZone
             player={game.players[seatBottom]}
@@ -183,11 +187,14 @@ export function TablePage() {
             position="bottom"
           />
         </div>
+
       </div>
 
-      <div className="sidebar">
-        <GameLog entries={game.log} />
-      </div>
+      {isGameLogEnabled() && (
+        <div className="sidebar">
+          <GameLog entries={game.log} />
+        </div>
+      )}
     </div>
   );
 }

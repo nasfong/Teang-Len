@@ -90,6 +90,16 @@ export const rules = {
 
     // Four-pair bomb: 4 consecutive pairs (8 cards) cuts a pair of 2s.
     allowFourPairBomb: true as boolean,
+
+    // Game log: when false, no log entries are appended and the log UI is hidden.
+    // Set to true to re-enable without any other code changes.
+    enableGameLog: false as boolean,
   },
 
 } as const;
+
+// ─── FEATURE HELPERS ─────────────────────────────────────────────────────────
+
+export function isGameLogEnabled(): boolean {
+  return rules.features.enableGameLog;
+}

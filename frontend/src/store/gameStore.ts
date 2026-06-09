@@ -30,33 +30,21 @@ export const useGameStore = create<GameStore>((set, get) => ({
   selectedCardIds: [],
 
   startGame() {
-    const { roomId, playerId, seatToPlayerId, room } = useLobbyStore.getState();
-    const numPlayers = room?.maxPlayers ?? 4;
+    const { roomId, playerId, room } = useLobbyStore.getState();
+    if (!room) return;
 
-    // Pre-seed names from room seat order so the engine log uses real names.
-    // Seats may not all be filled yet if maxPlayers > connected players,
-    // but the patch below overwrites with confirmed names anyway.
-    const seededNames = Array.from({ length: numPlayers }, (_, i) => {
-      const backendId = seatToPlayerId[i];
-      return room?.players.find(rp => rp.playerId === backendId)?.name ?? `Seat ${i}`;
-    });
+    // Only deal to players who are actually seated — never generate ghost players.
+    const sortedSeats = [...room.players]
+      .filter(rp => rp.seatIndex !== null)
+      .sort((a, b) => (a.seatIndex as number) - (b.seatIndex as number));
 
-    let game = dealGame(numPlayers, seededNames);
+    const numPlayers = sortedSeats.length;
+    const names      = sortedSeats.map(rp => rp.name);
 
-    // Final patch: re-confirm names from room in case seatToPlayerId wasn't
-    // fully populated when seededNames was built.
-    if (room) {
-      const patchedPlayers = game.players.map(p => {
-        const backendId = seatToPlayerId[p.id];
-        const roomPlayer = room.players.find(rp => rp.playerId === backendId);
-        return roomPlayer ? { ...p, name: roomPlayer.name } : p;
-      });
-      game = { ...game, players: patchedPlayers };
-    }
+    const game = dealGame(numPlayers, names);
 
     set({ game, error: null, selectedCardIds: [] });
 
-    // game:start — host only; backend stores state opaquely and broadcasts to all members.
     if (roomId && playerId) {
       socketService.emitGameStart({ roomId, playerId, initialGameState: game });
     }

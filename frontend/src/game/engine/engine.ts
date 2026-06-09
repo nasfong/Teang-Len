@@ -1,4 +1,4 @@
-import { rules } from '../rules/rules';
+import { rules, isGameLogEnabled } from '../rules/rules';
 import { makeDeck, shuffleDeck, sortCards, isThree, isTwo } from './cards';
 import { classifyHand, canBeat } from './hands';
 import type { Card, GameState, Hand, PlayerId, Player, Trick, EngineResult } from '../types';
@@ -10,6 +10,7 @@ function makePlayer(id: PlayerId, name: string, hand: Card[]): Player {
 }
 
 function log(state: GameState, message: string): GameState {
+  if (!isGameLogEnabled()) return state;
   return { ...state, log: [...state.log, message] };
 }
 
@@ -48,7 +49,7 @@ function removeCardsFromHand(hand: Card[], played: Card[]): Card[] {
 
 // ─── DEAL (CORRECTED — tracks 3♠ before stripping) ──────────────────────────
 
-const FALLBACK_NAMES = ['You', 'West', 'North', 'East'];
+const FALLBACK_NAMES = ['Player 1', 'Player 2', 'Player 3', 'Player 4'];
 
 export function dealGame(numPlayers: number = 4, playerNames?: string[]): GameState {
   const deck = shuffleDeck(makeDeck());
@@ -71,18 +72,23 @@ export function dealGame(numPlayers: number = 4, playerNames?: string[]): GameSt
     }
   }
 
-  const logLines: string[] = ['Cards dealt.'];
+  const logLines: string[] = [];
+  if (isGameLogEnabled()) {
+    logLines.push('Cards dealt.');
+  }
 
   const players: Player[] = rawHands.map((hand, i) => {
     const threes = hand.filter(isThree);
     const stripped = hand.filter(c => !isThree(c));
-    if (threes.length > 0) {
+    if (isGameLogEnabled() && threes.length > 0) {
       logLines.push(`${names[i] ?? FALLBACK_NAMES[i]} discards 3s: ${threes.map(c => c.id).join(' ')}`);
     }
     return makePlayer(i as PlayerId, names[i] ?? FALLBACK_NAMES[i], stripped);
   });
 
-  logLines.push(`${players[starterId].name} starts (held 3♠).`);
+  if (isGameLogEnabled()) {
+    logLines.push(`${players[starterId].name} starts (held 3♠).`);
+  }
 
   return {
     phase: 'playing',
@@ -148,6 +154,13 @@ export function playCards(state: GameState, cardIds: string[]): EngineResult {
   // Check if player finished their hand
   if (updatedHand.length === 0) {
     newState = rankPlayer(newState, player.id);
+  }
+
+  // Auto-rank the last remaining player — they don't need to play out their cards
+  const unranked = newState.players.filter(p => p.rank === null);
+  if (unranked.length === 1) {
+    newState = rankPlayer(newState, unranked[0].id);
+    newState = log(newState, `${unranked[0].name} is the last remaining player and is automatically assigned final place.`);
   }
 
   // Check game over

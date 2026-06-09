@@ -35,25 +35,28 @@ export function PlayerZone({
         player.skipped ? 'pzone--skipped' : '',
       ].filter(Boolean).join(' ')}
     >
-      <div className="pzone__info">
-        <div className="pzone__avatar">
-          {isHuman ? '🧑' : player.name[0].toUpperCase()}
-          {isCurrentTurn && !isFinished && <span className="pzone__pulse" />}
+      {/* Seat card — opponents only; local player info lives in the HUD */}
+      {!isHuman && (
+        <div className="pzone__info">
+          <div className="pzone__avatar">
+            {player.name[0].toUpperCase()}
+            {isCurrentTurn && !isFinished && <span className="pzone__pulse" />}
+          </div>
+          <div className="pzone__meta">
+            <span className="pzone__name">{player.name}</span>
+            <span className="pzone__cards-left">
+              {isFinished
+                ? `${RANK_EMOJI[player.rank!]} ${RANK_LABEL[player.rank!]}`
+                : player.skipped
+                  ? '⏭ Skipped'
+                  : `${player.hand.length} cards`}
+            </span>
+          </div>
+          {isCurrentTurn && !isFinished && (
+            <div className="pzone__turn-arrow">▶</div>
+          )}
         </div>
-        <div className="pzone__meta">
-          <span className="pzone__name">{player.name}</span>
-          <span className="pzone__cards-left">
-            {isFinished
-              ? `${RANK_EMOJI[player.rank!]} ${RANK_LABEL[player.rank!]}`
-              : player.skipped
-                ? '⏭ Skipped'
-                : `${player.hand.length} cards`}
-          </span>
-        </div>
-        {isCurrentTurn && !isFinished && (
-          <div className="pzone__turn-arrow">▶</div>
-        )}
-      </div>
+      )}
 
       {isHuman ? (
         <HumanHand
@@ -62,7 +65,11 @@ export function PlayerZone({
           onCardClick={onCardClick}
         />
       ) : (
-        <OpponentHand count={player.hand.length} isVertical={isVertical} isActive={isCurrentTurn} />
+        <OpponentHand
+          count={player.hand.length}
+          isVertical={isVertical}
+          isActive={isCurrentTurn}
+        />
       )}
     </div>
   );
@@ -76,11 +83,14 @@ interface HumanHandProps {
 
 function HumanHand({ cards, selectedCardIds, onCardClick }: HumanHandProps) {
   const total = cards.length;
-  const overlapPx = Math.max(18, Math.min(38, Math.floor(340 / Math.max(total, 1))));
+  const overlapPx = Math.max(18, Math.min(40, Math.floor(340 / Math.max(total, 1))));
 
   return (
     <div className="hand-fan" style={{ '--card-count': total } as React.CSSProperties}>
-      <div className="hand-fan__inner" style={{ width: total > 0 ? `${(total - 1) * overlapPx + 72}px` : '0px' }}>
+      <div
+        className="hand-fan__inner"
+        style={{ width: total > 0 ? `${(total - 1) * overlapPx + 72}px` : '0px' }}
+      >
         {cards.map((card, i) => {
           const selected = selectedCardIds.includes(card.id);
           return (
@@ -102,7 +112,15 @@ function HumanHand({ cards, selectedCardIds, onCardClick }: HumanHandProps) {
   );
 }
 
-function OpponentHand({ count, isVertical, isActive }: { count: number; isVertical: boolean; isActive: boolean }) {
+function OpponentHand({
+  count,
+  isVertical,
+  isActive,
+}: {
+  count: number;
+  isVertical: boolean;
+  isActive: boolean;
+}) {
   const show = Math.min(count, 10);
   return (
     <div className={`opp-hand${isVertical ? ' opp-hand--vertical' : ''}`}>

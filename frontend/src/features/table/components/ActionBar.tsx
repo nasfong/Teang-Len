@@ -1,3 +1,5 @@
+import type { PlayValidation } from '../../../game/engine/validation';
+
 interface ActionBarProps {
   selectedCount: number;
   canSkip: boolean;
@@ -5,6 +7,7 @@ interface ActionBarProps {
   onPlay: () => void;
   onSkip: () => void;
   currentPlayerName: string;
+  playValidation: PlayValidation;
 }
 
 export function ActionBar({
@@ -14,48 +17,50 @@ export function ActionBar({
   onPlay,
   onSkip,
   currentPlayerName,
+  playValidation,
 }: ActionBarProps) {
   if (!isPlayerTurn) {
     return (
       <div className="action-bar action-bar--waiting">
         <div className="action-bar__hint">
-          Waiting for {currentPlayerName}…
+          ⌛ {currentPlayerName}'s turn…
         </div>
       </div>
     );
   }
 
-  return (
-    <div className="action-bar action-bar--your-turn">
-      <div className="action-bar__your-turn-label">Your Turn</div>
-      <div className="action-bar__buttons">
-        <button
-          className={`btn btn--play${selectedCount > 0 ? ' btn--play-ready' : ''}`}
-          disabled={selectedCount === 0}
-          onClick={onPlay}
-        >
-          {selectedCount > 0 ? (
-            <>
-              <span className="btn__badge">{selectedCount}</span>
-              Play Cards
-            </>
-          ) : (
-            'Select Cards'
-          )}
-        </button>
+  const hintText = playValidation.reason
+    ? playValidation.reason
+    : playValidation.canPlay && selectedCount > 0
+      ? `${selectedCount} card${selectedCount > 1 ? 's' : ''} selected · tap to deselect`
+      : null;
 
+  return (
+    <div className="action-bar">
+      <div className="action-bar__your-turn-label">YOUR TURN</div>
+      <div className="action-bar__buttons">
         <button
           className="btn btn--skip"
           disabled={!canSkip}
           onClick={onSkip}
-          title={!canSkip ? "Can't skip when opening a trick" : 'Skip this trick'}
+          title={!canSkip ? 'Must open the trick' : 'Pass this trick'}
         >
-          Skip
+          PASS
+        </button>
+        <button
+          className={`btn btn--play${playValidation.canPlay ? ' btn--play-ready' : ''}`}
+          disabled={!playValidation.canPlay}
+          onClick={onPlay}
+        >
+          {selectedCount > 0
+            ? <>PLAY <span className="btn__badge">{selectedCount}</span></>
+            : 'SELECT CARDS'
+          }
         </button>
       </div>
-      {selectedCount > 0 && (
-        <div className="action-bar__hint">
-          {selectedCount} card{selectedCount > 1 ? 's' : ''} selected · tap card to deselect
+      {hintText && (
+        <div className={`action-bar__hint${playValidation.reason ? ' action-bar__hint--invalid' : ''}`}>
+          {hintText}
         </div>
       )}
     </div>
