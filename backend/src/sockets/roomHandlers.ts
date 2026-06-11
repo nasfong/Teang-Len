@@ -4,6 +4,8 @@ import {
   SocketRoomJoinSchema,
   SocketRoomLeaveSchema,
   SocketPlayerReadySchema,
+  SocketRoomQueueLeaveSchema,
+  SocketRoomCancelQueueLeaveSchema,
 } from "../types/schemas";
 import { roomService } from "../services/roomService";
 import { playerService } from "../services/playerService";
@@ -50,6 +52,15 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
 
     const { roomId, playerId } = payload;
 
+    // During an active game, queue the departure instead of removing immediately
+    const snapshot = roomService.getSnapshot(roomId);
+    if (snapshot.ok && snapshot.data.status === "playing") {
+      const result = roomService.queueLeave(roomId, playerId);
+      if (!result.ok) { emitError(socket, result.error); return; }
+      broadcastRoomUpdate(io, roomId, { room: result.data });
+      return;
+    }
+
     void socket.leave(roomId);
     playerService.setSocketId(playerId, null);
 
@@ -59,6 +70,28 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
       return;
     }
 
+    broadcastRoomUpdate(io, roomId, { room: result.data });
+  });
+
+  // ── room:queue-leave ─────────────────────────
+  socket.on(CLIENT_EVENTS.ROOM_QUEUE_LEAVE, (raw: unknown) => {
+    const payload = parsePayload(socket, SocketRoomQueueLeaveSchema, raw);
+    if (!payload) return;
+
+    const { roomId, playerId } = payload;
+    const result = roomService.queueLeave(roomId, playerId);
+    if (!result.ok) { emitError(socket, result.error); return; }
+    broadcastRoomUpdate(io, roomId, { room: result.data });
+  });
+
+  // ── room:cancel-queue-leave ──────────────────
+  socket.on(CLIENT_EVENTS.ROOM_CANCEL_QUEUE_LEAVE, (raw: unknown) => {
+    const payload = parsePayload(socket, SocketRoomCancelQueueLeaveSchema, raw);
+    if (!payload) return;
+
+    const { roomId, playerId } = payload;
+    const result = roomService.cancelQueueLeave(roomId, playerId);
+    if (!result.ok) { emitError(socket, result.error); return; }
     broadcastRoomUpdate(io, roomId, { room: result.data });
   });
 

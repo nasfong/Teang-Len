@@ -48,6 +48,7 @@ export const SocketGameStartSchema = z.object({
   roomId:           z.string().min(1),
   playerId:         z.string().uuid(),
   initialGameState: z.unknown(),
+  secondsPerTurn:   z.number().int().min(5).max(120).optional(),
 });
 
 export const SocketGamePlaySchema = z.object({
@@ -60,4 +61,14 @@ export const SocketGameSkipSchema = z.object({
   roomId:    z.string().min(1),
   playerId:  z.string().uuid(),
   gameState: z.unknown(),
+});
+
+export const SocketRoomQueueLeaveSchema = z.object({
+  roomId:   z.string().min(1),
+  playerId: z.string().uuid(),
+});
+
+export const SocketRoomCancelQueueLeaveSchema = z.object({
+  roomId:   z.string().min(1),
+  playerId: z.string().uuid(),
 });

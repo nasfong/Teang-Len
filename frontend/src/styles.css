@@ -264,6 +264,9 @@ body {
 .table--two-player .table__side   { display: none; }
 .table--two-player .table__middle { grid-template-columns: 1fr; }
 
+/* Waiting state: no HUD row — bottom snaps to content height */
+.table--waiting { grid-template-rows: auto 1fr auto; }
+
 .table__top {
   display: flex;
   justify-content: center;
@@ -421,11 +424,50 @@ body {
 }
 .hud__settings:hover { background: rgba(255,255,255,0.12); color: rgba(255,255,255,0.75); }
 
+/* Leave-after-match controls (shown in HUD during active game) */
+.hud__leave-btn {
+  background: rgba(255,80,80,0.15);
+  border: 1px solid rgba(255,80,80,0.25);
+  color: rgba(255,130,130,0.9);
+  border-radius: 8px;
+  padding: 5px 10px;
+  font-size: 0.65rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.hud__leave-btn:hover { background: rgba(255,80,80,0.28); }
+
+.hud__leave-queue {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.hud__leave-queue-label {
+  font-size: 0.6rem;
+  color: rgba(255,200,100,0.85);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+}
+.hud__leave-cancel {
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.14);
+  color: rgba(255,255,255,0.65);
+  border-radius: 6px;
+  padding: 3px 8px;
+  font-size: 0.6rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.hud__leave-cancel:hover { background: rgba(255,255,255,0.15); }
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    PLAYER ZONE — seat cards floating on the table
 ═══════════════════════════════════════════════════════════════════════════════ */
 
 .pzone {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -435,6 +477,43 @@ body {
 
 .pzone--finished { opacity: 0.55; }
 .pzone--skipped  { opacity: 0.72; }
+.pzone--endgame  { opacity: 1; }
+
+/* ── Endgame rank badge overlay ─────────────────────────────────────────────── */
+
+.pzone__endgame-badge {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  background: rgba(10, 18, 40, 0.72);
+  border-radius: 12px;
+  z-index: 10;
+  animation: endgame-badge-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards;
+  pointer-events: none;
+}
+
+.pzone__endgame-badge__emoji {
+  font-size: 2rem;
+  line-height: 1;
+  filter: drop-shadow(0 0 8px rgba(255, 200, 80, 0.6));
+}
+
+.pzone__endgame-badge__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #fff;
+  text-shadow: 0 1px 4px rgba(0, 0, 0, 0.6);
+}
+
+@keyframes endgame-badge-pop {
+  from { opacity: 0; transform: scale(0.4); }
+  to   { opacity: 1; transform: scale(1);   }
+}
 
 .pzone--left, .pzone--right {
   gap: 2px;
@@ -566,6 +645,40 @@ body {
 @keyframes arrow-bounce {
   from { transform: translateX(0); }
   to   { transform: translateX(4px); }
+}
+
+/* Turn timer badge — shown in opponent seat cards */
+.pzone__timer {
+  background: rgba(249,115,22,0.14);
+  border: 1.5px solid rgba(249,115,22,0.38);
+  color: var(--accent-bright);
+  border-radius: 6px;
+  padding: 1px 6px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  min-width: 26px;
+  text-align: center;
+  flex-shrink: 0;
+}
+
+.pzone--left .pzone__timer,
+.pzone--right .pzone__timer {
+  font-size: 0.60rem;
+  padding: 1px 4px;
+  min-width: 22px;
+}
+
+.pzone__timer--urgent {
+  background: rgba(239,68,68,0.18);
+  border-color: rgba(239,68,68,0.55);
+  color: #fca5a5;
+  animation: timer-pulse 0.7s ease infinite;
+}
+
+@keyframes timer-pulse {
+  0%, 100% { opacity: 1;    transform: scale(1); }
+  50%       { opacity: 0.65; transform: scale(1.06); }
 }
 
 /* ── Human hand (local player) ───────────────────────────────────────────────── */
@@ -812,6 +925,14 @@ body {
   text-align: center;
 }
 
+.wait-seat__coins {
+  font-size: 0.64rem;
+  font-weight: 600;
+  color: rgba(200,140,40,0.90);
+  text-align: center;
+  letter-spacing: 0.2px;
+}
+
 /* ═══════════════════════════════════════════════════════════════════════════════
    TRICK AREA — visual center of the table
 ═══════════════════════════════════════════════════════════════════════════════ */
@@ -954,12 +1075,38 @@ body {
   width: 100%;
 }
 
+.action-bar__your-turn-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 .action-bar__your-turn-label {
   font-size: 0.58rem;
   font-weight: 700;
   letter-spacing: 2.5px;
   text-transform: uppercase;
   color: var(--accent);
+}
+
+.action-bar__timer {
+  background: rgba(249,115,22,0.15);
+  border: 1.5px solid rgba(249,115,22,0.40);
+  color: var(--accent-bright);
+  border-radius: 7px;
+  padding: 1px 7px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  min-width: 32px;
+  text-align: center;
+}
+
+.action-bar__timer--urgent {
+  background: rgba(239,68,68,0.18);
+  border-color: rgba(239,68,68,0.55);
+  color: #fca5a5;
+  animation: timer-pulse 0.7s ease infinite;
 }
 
 .action-bar__buttons {
@@ -1085,54 +1232,99 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
-  padding: 16px 20px;
-  background: rgba(0,0,0,0.55);
-  border-radius: 16px;
-  border: 1px solid rgba(255,255,255,0.08);
+  gap: 14px;
+  padding: 22px 28px;
+  background: rgba(0,0,0,0.60);
+  border-radius: 18px;
+  border: 1px solid rgba(255,255,255,0.09);
   min-width: 150px;
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(10px);
+  box-shadow: 0 10px 40px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.03) inset;
 }
 
-.wait-center__label {
-  font-size: 0.58rem;
-  letter-spacing: 2px;
-  text-transform: uppercase;
-  color: var(--text-muted);
+/* Start button fills the panel and is more prominent */
+.wait-center .btn--deal {
+  width: 100%;
+  padding: 16px 24px;
+  font-size: 1rem;
+  letter-spacing: 0.8px;
 }
 
-.wait-center__code {
-  font-size: 0.88rem;
-  font-weight: 700;
-  letter-spacing: 2px;
-  color: var(--cyan);
-  font-family: monospace;
+.wait-center .btn--deal:disabled {
+  background: rgba(255,255,255,0.07);
+  color: rgba(255,255,255,0.28);
+  box-shadow: none;
+  transform: none;
+  cursor: not-allowed;
 }
 
-.wait-center__count {
-  font-size: 0.70rem;
-  color: var(--text-muted);
-  margin-top: -8px;
-}
-
-.wait-center__actions {
+.wait-center__waiting {
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  width: 100%;
+  align-items: center;
+  gap: 10px;
 }
 
-.btn--leave {
-  background: rgba(255,255,255,0.06);
-  color: var(--text-muted);
-  border: 1px solid rgba(255,255,255,0.08);
-  height: 36px;
-  min-height: 36px;
-  font-size: 0.75rem;
-  font-weight: 600;
-  border-radius: 8px;
+.wait-center__waiting-text {
+  font-size: 0.72rem;
+  color: rgba(255,255,255,0.42);
+  letter-spacing: 0.5px;
+  text-align: center;
 }
-.btn--leave:hover { background: rgba(255,255,255,0.10); }
+
+/* ── Animated waiting dots ───────────────────────────────────────────────────── */
+
+.wait-dots {
+  display: flex;
+  gap: 5px;
+  align-items: center;
+}
+
+.wait-dots > span {
+  display: block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.30);
+  animation: wait-dot-pulse 1.4s ease-in-out infinite;
+}
+
+.wait-dots > span:nth-child(2) { animation-delay: 0.2s; }
+.wait-dots > span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes wait-dot-pulse {
+  0%, 80%, 100% { opacity: 0.2; transform: scale(0.75); }
+  40%            { opacity: 1;   transform: scale(1);    }
+}
+
+/* ── Floating leave button (waiting state) ──────────────────────────────────── */
+
+.wait-leave {
+  position: fixed;
+  top: 12px;
+  right: 12px;
+  z-index: 50;
+  height: 34px;
+  padding: 0 14px;
+  border-radius: 20px;
+  background: rgba(0,0,0,0.50);
+  border: 1px solid rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.55);
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.2px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  white-space: nowrap;
+  transition: background 0.15s, color 0.15s;
+}
+.wait-leave:hover {
+  background: rgba(200,40,40,0.32);
+  color: #fff;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════════
    SIDEBAR — hidden on mobile
@@ -1368,6 +1560,15 @@ body {
   backdrop-filter: blur(8px);
 }
 
+.toast--info {
+  background: rgba(15,23,42,0.88);
+  border: 1px solid rgba(255,255,255,0.10);
+  color: var(--text-secondary);
+  box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+  backdrop-filter: blur(8px);
+  pointer-events: none;
+}
+
 @keyframes toast-in {
   from { opacity: 0; transform: translateX(-50%) translateY(-10px); }
   to   { opacity: 1; transform: translateX(-50%) translateY(0); }
@@ -1380,3 +1581,68 @@ body {
 ::-webkit-scrollbar        { width: 3px; }
 ::-webkit-scrollbar-track  { background: transparent; }
 ::-webkit-scrollbar-thumb  { background: rgba(255,255,255,0.08); border-radius: 2px; }
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   DEAL ANIMATION
+═══════════════════════════════════════════════════════════════════════════════ */
+
+/* During deal: positions animate as newly revealed cards insert into sorted order */
+.hand-fan--dealing .hand-fan__slot {
+  transition: left 65ms ease-out;
+  pointer-events: none;
+}
+
+/* The most-recently revealed card flips from squashed back to face-up */
+.hand-fan__slot--just-revealed > .card {
+  animation: card-flip-in 75ms ease-out both;
+}
+
+@keyframes card-flip-in {
+  0%   { opacity: 0.1; transform: scaleX(0.05) scaleY(0.9); }
+  55%  { opacity: 1;   transform: scaleX(1.06) scaleY(1.03); }
+  100% { opacity: 1;   transform: scaleX(1)    scaleY(1); }
+}
+
+/* Bomb highlight — plays once after reveal, leaves a subtle permanent ring */
+.card--bomb-glow {
+  animation: bomb-glow-pulse 0.9s ease 0.08s both;
+}
+
+@keyframes bomb-glow-pulse {
+  0%   { box-shadow: 0 2px 8px var(--card-shadow); }
+  22%  { box-shadow: 0 0 0 3px #f97316, 0 0 28px rgba(249,115,22,0.85), 0 2px 8px rgba(0,0,0,0.2); transform: scale(1.06); }
+  65%  { box-shadow: 0 0 0 2.5px #f97316, 0 0 16px rgba(249,115,22,0.55), 0 2px 8px rgba(0,0,0,0.2); transform: scale(1.02); }
+  100% { box-shadow: 0 0 0 2px rgba(249,115,22,0.50), 0 0 10px rgba(249,115,22,0.22), 0 2px 8px rgba(0,0,0,0.18); transform: scale(1); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   GAME START BANNER
+═══════════════════════════════════════════════════════════════════════════════ */
+
+.deal-banner {
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  z-index: 999;
+  pointer-events: none;
+  animation: banner-appear 0.95s ease-out forwards;
+}
+
+.deal-banner__text {
+  display: block;
+  font-family: 'Outfit', sans-serif;
+  font-size: clamp(1.6rem, 5vw, 2.4rem);
+  font-weight: 800;
+  letter-spacing: 7px;
+  text-transform: uppercase;
+  color: #fff;
+  text-shadow: 0 0 32px rgba(249,115,22,0.75), 0 2px 5px rgba(0,0,0,0.6);
+  white-space: nowrap;
+}
+
+@keyframes banner-appear {
+  0%   { opacity: 0; transform: translate(-50%, -50%) scale(0.65); }
+  18%  { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
+  55%  { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.08); }
+}

@@ -24,13 +24,16 @@ export type RoomStatus = "waiting" | "starting" | "playing" | "finished";
 export interface Room {
   roomId: string;
   hostPlayerId: string;
-  players: Player[];             // max 4
+  players: Player[];                  // max 4
   status: RoomStatus;
-  gameState: unknown;            // opaque — backend never interprets this
-  version: number;               // increments on every state update
+  gameState: unknown;                 // opaque — backend never interprets this
+  version: number;                    // increments on every state update
   createdAt: number;
   updatedAt: number;
   maxPlayers: number;
+  turnStartedAt: number | null;       // epoch ms when current turn timer started
+  turnDurationMs: number;             // timer per turn (set from game:start payload)
+  pendingLeavePlayerIds: string[];    // playerIds queued to leave after match ends
 }
 
 // ─────────────────────────────────────────────
@@ -104,6 +107,7 @@ export interface GameUpdatePayload {
   gameState: unknown;
   version: number;
   triggeredBy: string;       // playerId
+  turnStartedAt?: number;    // epoch ms — included when a new turn begins
 }
 
 export interface TurnUpdatePayload {
@@ -129,6 +133,10 @@ export interface PlayerDisconnectedPayload {
   playerId: string;
 }
 
+export interface TurnTimeoutPayload {
+  roomId: string;
+}
+
 // ─────────────────────────────────────────────
 // Room snapshot (safe public shape for API/sockets)
 // ─────────────────────────────────────────────
@@ -143,6 +151,9 @@ export interface RoomSnapshot {
   maxPlayers: number;
   createdAt: number;
   updatedAt: number;
+  turnStartedAt: number | null;
+  turnDurationMs: number;
+  pendingLeavePlayerIds: string[];
 }
 
 export interface PlayerSnapshot {

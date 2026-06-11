@@ -7,15 +7,18 @@ import { Player, Room, RoomSnapshot, PlayerSnapshot } from "../types";
 
 export function createRoom(hostPlayer: Player, maxPlayers: number): Room {
   return {
-    roomId:       uuidv4(),
-    hostPlayerId: hostPlayer.playerId,
-    players:      [{ ...hostPlayer, seatIndex: 0 }],
-    status:       "waiting",
-    gameState:    null,
-    version:      0,
+    roomId:                 uuidv4(),
+    hostPlayerId:           hostPlayer.playerId,
+    players:                [{ ...hostPlayer, seatIndex: 0 }],
+    status:                 "waiting",
+    gameState:              null,
+    version:                0,
     maxPlayers,
-    createdAt:    Date.now(),
-    updatedAt:    Date.now(),
+    createdAt:              Date.now(),
+    updatedAt:              Date.now(),
+    turnStartedAt:          null,
+    turnDurationMs:         15_000,
+    pendingLeavePlayerIds:  [],
   };
 }
 
@@ -48,15 +51,18 @@ export function toPlayerSnapshot(player: Player): PlayerSnapshot {
 
 export function toRoomSnapshot(room: Room): RoomSnapshot {
   return {
-    roomId:       room.roomId,
-    hostPlayerId: room.hostPlayerId,
-    players:      room.players.map(toPlayerSnapshot),
-    status:       room.status,
-    gameState:    room.gameState,
-    version:      room.version,
-    maxPlayers:   room.maxPlayers,
-    createdAt:    room.createdAt,
-    updatedAt:    room.updatedAt,
+    roomId:                room.roomId,
+    hostPlayerId:          room.hostPlayerId,
+    players:               room.players.map(toPlayerSnapshot),
+    status:                room.status,
+    gameState:             room.gameState,
+    version:               room.version,
+    maxPlayers:            room.maxPlayers,
+    createdAt:             room.createdAt,
+    updatedAt:             room.updatedAt,
+    turnStartedAt:         room.turnStartedAt,
+    turnDurationMs:        room.turnDurationMs,
+    pendingLeavePlayerIds: room.pendingLeavePlayerIds,
   };
 }
 

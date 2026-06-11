@@ -74,6 +74,14 @@ export const rules = {
     continueUntilAllRanked: true,
   },
 
+  // ── Turn Timer ───────────────────────────────────────────────────────────────
+  // Single source of truth for the per-turn countdown.
+  // Change secondsPerTurn here — no other code changes required.
+  turnTimer: {
+    enabled: true as boolean,
+    secondsPerTurn: 15 as number,
+  },
+
   // ── Feature Flags ────────────────────────────────────────────────────────────
   // All values typed as boolean (not literal) so they can be toggled in tests at runtime.
   // This is the single source of truth for optional/house-rule behaviour.

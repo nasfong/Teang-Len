@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useNavigate } from 'react-router-dom';
 import { EnterPage } from './pages/EnterPage';
 import { RoomPage } from './pages/RoomPage';
 import { TablePage } from './pages/TablePage';
@@ -29,11 +29,13 @@ function CatchAll() {
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
+  const navigate                        = useNavigate();
   const { playerId, setRoom } = useLobbyStore();
-  const { syncFromServer }    = useGameStore();
+  const { syncFromServer, resetGame }   = useGameStore();
 
   // Global socket listeners — scoped to authenticated session
   useEffect(() => {
+    // localStorage.clear()
     if (!playerId) return;
     const { socket } = socketService;
 
@@ -46,6 +48,19 @@ export default function App() {
     );
 
     socket.on(SERVER_EVENTS.ROOM_UPDATE, ({ room }: { room: RoomSnapshot }) => {
+      const stillInRoom = room.players.some(p => p.playerId === playerId);
+      const { roomId: currentRoomId } = useLobbyStore.getState();
+      if (!stillInRoom && currentRoomId === room.roomId) {
+        const { game } = useGameStore.getState();
+        if (game?.phase === 'game_over') {
+          // Let the 3-second result display finish first; TablePage timer handles the redirect.
+          useLobbyStore.getState().setPendingLeave(true);
+          return;
+        }
+        resetGame();
+        navigate('/room');
+        return;
+      }
       setRoom(room);
     });
 
@@ -53,7 +68,7 @@ export default function App() {
       socket.off(SERVER_EVENTS.GAME_UPDATE);
       socket.off(SERVER_EVENTS.ROOM_UPDATE);
     };
-  }, [playerId, syncFromServer, setRoom]);
+  }, [playerId, syncFromServer, setRoom, resetGame, navigate]);
 
   return (
     <Routes>

@@ -47,6 +47,7 @@ export function WaitSeat({ seatIdx, room, playerId, closed }: WaitSeatProps) {
             {isHost  && <span className="wait-seat__badge wait-seat__badge--host">HOST</span>}
             {isLocal && <span className="wait-seat__badge wait-seat__badge--you">YOU</span>}
           </div>
+          {isLocal && <span className="wait-seat__coins">💰 0</span>}
         </div>
       </div>
     </div>

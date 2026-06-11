@@ -31,6 +31,9 @@ export interface RoomSnapshot {
   maxPlayers: number;
   createdAt: number;
   updatedAt: number;
+  turnStartedAt: number | null;
+  turnDurationMs: number;
+  pendingLeavePlayerIds: string[];
 }
 
 // ─── Internal fetch helper ────────────────────────────────────────────────────

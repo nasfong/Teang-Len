@@ -7,6 +7,7 @@ interface CardViewProps {
   onClick?: (card: Card) => void;
   small?: boolean;
   dimmed?: boolean;
+  bombGlow?: boolean;
 }
 
 const RED_SUITS = new Set(['♦', '♥']);
@@ -15,7 +16,7 @@ const SUIT_SYMBOL: Record<string, string> = {
   '♠': '♠', '♣': '♣', '♦': '♦', '♥': '♥',
 };
 
-export function CardView({ card, selected, faceDown, onClick, small, dimmed }: CardViewProps) {
+export function CardView({ card, selected, faceDown, onClick, small, dimmed, bombGlow }: CardViewProps) {
   const isRed = RED_SUITS.has(card.suit);
   const clickable = !!onClick;
 
@@ -38,6 +39,7 @@ export function CardView({ card, selected, faceDown, onClick, small, dimmed }: C
         small ? 'card--small' : '',
         dimmed ? 'card--dimmed' : '',
         clickable ? 'card--clickable' : '',
+        bombGlow && !selected ? 'card--bomb-glow' : '',
       ].filter(Boolean).join(' ')}
       onClick={() => onClick?.(card)}
     >

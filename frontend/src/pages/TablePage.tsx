@@ -5,14 +5,16 @@ import { useLobbyStore } from '../store/lobbyStore';
 import { socketService } from '../services/socket';
 import { useTableHydration } from '../features/table/hooks/useTableHydration';
 import { useSeatMapping } from '../features/table/hooks/useSeatMapping';
+import { useDealAnimation } from '../features/table/hooks/useDealAnimation';
+import { useTurnTimer } from '../features/table/hooks/useTurnTimer';
 import { WaitingTable } from '../features/table/components/WaitingTable';
-import { GameResults } from '../features/table/components/GameResults';
 import { PlayerZone } from '../features/table/components/PlayerZone';
 import { TrickArea } from '../features/table/components/TrickArea';
 import { ActionBar } from '../features/table/components/ActionBar';
 import { GameLog } from '../features/table/components/GameLog';
 import { PlaceholderSeat } from '../features/table/components/PlaceholderSeat';
 import { TableHUD } from '../features/table/components/TableHUD';
+import { GameStartBanner } from '../features/table/components/GameStartBanner';
 import { isGameLogEnabled } from '../game/rules/rules';
 import { validatePlay } from '../game/engine/validation';
 import type { PlayerId } from '../game/types';
@@ -25,7 +27,7 @@ export function TablePage() {
   const {
     game, error, selectedCardIds,
     selectCard, playSelectedCards, skipCurrentTurn,
-    clearError, resetGame, startGame,
+    clearError, clearGameState, resetGame, startGame,
   } = useGameStore();
 
   const { playerId, playerName, room, localSeatIndex } = useLobbyStore();
@@ -35,11 +37,30 @@ export function TablePage() {
   const numPlayers = game ? game.players.length : (room?.maxPlayers ?? 4);
   const { seatBottom, seatRight, seatTop, seatLeft } = useSeatMapping(localSeatIndex, numPlayers);
 
+  // Must be called before any early returns — Rules of Hooks
+  const { dealPhase, revealedCount, dealOrder, bombCardIds, isLocked, showBanner } = useDealAnimation(game, localSeatIndex);
+  const { secondsLeft, isUrgent, notification } = useTurnTimer(game, localSeatIndex);
+
   useEffect(() => {
     if (!error) return;
     const t = setTimeout(clearError, 3000);
     return () => clearTimeout(t);
   }, [error, clearError]);
+
+  // Auto-transition out of endgame after 3 seconds
+  useEffect(() => {
+    if (game?.phase !== 'game_over') return;
+    const t = setTimeout(() => {
+      const { pendingLeave } = useLobbyStore.getState();
+      if (pendingLeave) {
+        resetGame();
+        navigate('/room');
+      } else {
+        clearGameState();
+      }
+    }, 3000);
+    return () => clearTimeout(t);
+  }, [game?.phase, clearGameState, resetGame, navigate]);
 
   function handleLeave(): void {
     if (roomIdParam && playerId) {
@@ -49,9 +70,16 @@ export function TablePage() {
     navigate('/room');
   }
 
-  function handleBackToRooms(): void {
-    resetGame();
-    navigate('/room');
+  function handleQueueLeave(): void {
+    if (roomIdParam && playerId) {
+      socketService.emitRoomQueueLeave({ roomId: roomIdParam, playerId });
+    }
+  }
+
+  function handleCancelLeave(): void {
+    if (roomIdParam && playerId) {
+      socketService.emitRoomCancelQueueLeave({ roomId: roomIdParam, playerId });
+    }
   }
 
   if (!roomIdParam) return <Navigate to="/room" replace />;
@@ -85,7 +113,6 @@ export function TablePage() {
   if (!game) {
     return (
       <WaitingTable
-        roomIdParam={roomIdParam}
         room={room}
         playerId={playerId}
         maxSeats={maxSeats}
@@ -98,18 +125,14 @@ export function TablePage() {
     );
   }
 
-  // ── State D — Finished ─────────────────────────────────────────────────────
+  // ── State C — Playing (+ endgame result display) ──────────────────────────
 
-  if (game.phase === 'game_over') {
-    return <GameResults game={game} onBack={handleBackToRooms} />;
-  }
-
-  // ── State C — Playing ──────────────────────────────────────────────────────
-
-  const isPlayerTurn      = game.currentPlayer === seatBottom;
+  const isEndgame         = game.phase === 'game_over';
+  const isPlayerTurn      = !isEndgame && game.currentPlayer === seatBottom;
   const canSkip           = game.currentTrick.currentHand !== null;
   const currentPlayerName = game.players[game.currentPlayer].name;
   const playerNames       = game.players.map(p => p.name);
+  const isQueuedToLeave   = room?.pendingLeavePlayerIds?.includes(playerId ?? '') ?? false;
 
   const selectedCards = game.players[seatBottom].hand.filter(c => selectedCardIds.includes(c.id));
   const playValidation: PlayValidation = isPlayerTurn
@@ -118,12 +141,16 @@ export function TablePage() {
 
   function renderOpponent(seat: PlayerId | null, position: 'top' | 'left' | 'right') {
     if (seat === null) return <PlaceholderSeat />;
+    const isTurn = !isEndgame && game!.currentPlayer === seat;
     return (
       <PlayerZone
         player={game!.players[seat]}
-        isCurrentTurn={game!.currentPlayer === seat}
+        isCurrentTurn={isTurn}
         isHuman={false}
         position={position}
+        turnSecondsLeft={isTurn ? secondsLeft : null}
+        isUrgent={isTurn ? isUrgent : false}
+        isEndgame={isEndgame}
       />
     );
   }
@@ -132,10 +159,15 @@ export function TablePage() {
 
   return (
     <div className={isGameLogEnabled() ? 'game-root game-root--log' : 'game-root'}>
+      <GameStartBanner show={showBanner} />
+
       {error && (
         <div className="toast toast--error" onClick={clearError}>
           ⚠ {error}
         </div>
+      )}
+      {notification && (
+        <div className="toast toast--info">{notification}</div>
       )}
 
       <div className={tableClass}>
@@ -147,6 +179,10 @@ export function TablePage() {
             roomId={roomIdParam}
             playerCount={game.players.length}
             maxSeats={maxSeats}
+            isPlaying={!isEndgame}
+            isQueuedToLeave={isQueuedToLeave}
+            onQueueLeave={handleQueueLeave}
+            onCancelLeave={handleCancelLeave}
           />
         </div>
 
@@ -160,7 +196,7 @@ export function TablePage() {
           </div>
 
           <div className="table__center">
-            <TrickArea trick={game.currentTrick} playerNames={playerNames} />
+            {!isEndgame && <TrickArea trick={game.currentTrick} playerNames={playerNames} />}
           </div>
 
           <div className="table__side table__side--right">
@@ -169,22 +205,32 @@ export function TablePage() {
         </div>
 
         <div className="table__bottom">
-          <ActionBar
-            selectedCount={selectedCardIds.length}
-            canSkip={canSkip}
-            isPlayerTurn={isPlayerTurn}
-            onPlay={playSelectedCards}
-            onSkip={skipCurrentTurn}
-            currentPlayerName={currentPlayerName}
-            playValidation={playValidation}
-          />
+          {!isEndgame && (
+            <ActionBar
+              selectedCount={selectedCardIds.length}
+              canSkip={canSkip}
+              isPlayerTurn={isPlayerTurn}
+              onPlay={playSelectedCards}
+              onSkip={skipCurrentTurn}
+              currentPlayerName={currentPlayerName}
+              playValidation={playValidation}
+              isLocked={isLocked}
+              turnSecondsLeft={isPlayerTurn ? secondsLeft : null}
+              isUrgent={isPlayerTurn ? isUrgent : false}
+            />
+          )}
           <PlayerZone
             player={game.players[seatBottom]}
             isCurrentTurn={isPlayerTurn}
             isHuman={true}
-            selectedCardIds={selectedCardIds}
-            onCardClick={selectCard}
+            selectedCardIds={isEndgame ? [] : selectedCardIds}
+            onCardClick={isEndgame || isLocked ? undefined : selectCard}
             position="bottom"
+            dealPhase={dealPhase}
+            revealedCount={revealedCount}
+            dealOrder={dealOrder}
+            bombCardIds={bombCardIds}
+            isEndgame={isEndgame}
           />
         </div>
 

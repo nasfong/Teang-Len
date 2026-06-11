@@ -14,6 +14,7 @@ import {
   broadcastGameEnd,
   emitError,
 } from "./emit";
+import { startTurnTimer, clearTurnTimer } from "./turnTimer";
 
 // ─────────────────────────────────────────────
 // game:start
@@ -49,12 +50,18 @@ export function registerGameHandlers(io: Server, socket: Socket): void {
     const payload = parsePayload(socket, SocketGameStartSchema, raw);
     if (!payload) return;
 
-    const { roomId, playerId, initialGameState } = payload;
+    const { roomId, playerId, initialGameState, secondsPerTurn } = payload;
     const result = roomService.startGame(roomId, playerId, initialGameState);
     if (!result.ok) {
       emitError(socket, result.error);
       return;
     }
+
+    // Start the per-turn timer; duration override comes from the host's rules config
+    const durationMs = secondsPerTurn !== undefined
+      ? Math.max(5, Math.min(120, secondsPerTurn)) * 1000
+      : undefined;
+    const turnStartedAt = startTurnTimer(io, roomId, durationMs) ?? undefined;
 
     broadcastRoomUpdate(io, roomId, { room: result.data });
     broadcastGameUpdate(io, roomId, {
@@ -62,6 +69,7 @@ export function registerGameHandlers(io: Server, socket: Socket): void {
       gameState:   result.data.gameState,
       version:     result.data.version,
       triggeredBy: playerId,
+      turnStartedAt,
     });
   });
 
@@ -80,12 +88,21 @@ export function registerGameHandlers(io: Server, socket: Socket): void {
       return;
     }
 
+    // Timer: stop on game over, restart otherwise
+    let turnStartedAt: number | undefined;
+    if (payload.gameOver) {
+      clearTurnTimer(roomId);
+    } else {
+      turnStartedAt = startTurnTimer(io, roomId) ?? undefined;
+    }
+
     // Always broadcast new game state
     broadcastGameUpdate(io, roomId, {
       roomId,
       gameState:   result.data.gameState,
       version:     result.data.version,
       triggeredBy: playerId,
+      turnStartedAt,
     });
 
     // Player finished signal
@@ -105,6 +122,12 @@ export function registerGameHandlers(io: Server, socket: Socket): void {
         rankings:  payload.rankings,
         gameState: result.data.gameState,
       });
+
+      // Process queued departures, reset room to waiting for next match
+      const endResult = roomService.endGame(roomId);
+      if (endResult.ok && endResult.data !== null) {
+        broadcastRoomUpdate(io, roomId, { room: endResult.data });
+      }
     }
   });
 
@@ -121,11 +144,14 @@ export function registerGameHandlers(io: Server, socket: Socket): void {
       return;
     }
 
+    const turnStartedAt = startTurnTimer(io, roomId) ?? undefined;
+
     broadcastGameUpdate(io, roomId, {
       roomId,
       gameState:   result.data.gameState,
       version:     result.data.version,
       triggeredBy: playerId,
+      turnStartedAt,
     });
   });
 }

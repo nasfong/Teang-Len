@@ -7,12 +7,14 @@ const SOCKET_URL = (import.meta.env.VITE_SOCKET_URL as string | undefined) ?? 'h
 // Must stay in sync with backend CLIENT_EVENTS / SERVER_EVENTS.
 
 export const CLIENT_EVENTS = {
-  ROOM_JOIN:    'room:join',
-  ROOM_LEAVE:   'room:leave',
-  PLAYER_READY: 'player:ready',
-  GAME_START:   'game:start',
-  GAME_PLAY:    'game:play',
-  GAME_SKIP:    'game:skip',
+  ROOM_JOIN:               'room:join',
+  ROOM_LEAVE:              'room:leave',
+  ROOM_QUEUE_LEAVE:        'room:queue-leave',
+  ROOM_CANCEL_QUEUE_LEAVE: 'room:cancel-queue-leave',
+  PLAYER_READY:            'player:ready',
+  GAME_START:              'game:start',
+  GAME_PLAY:               'game:play',
+  GAME_SKIP:               'game:skip',
 } as const;
 
 export const SERVER_EVENTS = {
@@ -20,6 +22,7 @@ export const SERVER_EVENTS = {
   ROOM_LIST_UPDATE:    'room:list:update',    // broadcast when any room changes
   GAME_UPDATE:         'game:update',
   TURN_UPDATE:         'turn:update',
+  TURN_TIMEOUT:        'turn:timeout',
   PLAYER_FINISHED:     'player:finished',
   PLAYER_JOINED:       'player:joined',
   PLAYER_LEFT:         'player:left',
@@ -48,11 +51,12 @@ export interface PlayerReadyPayload {
   playerId: string;
 }
 
-/** SocketGameStartSchema: { roomId: string, playerId: UUID, initialGameState: unknown } */
+/** SocketGameStartSchema: { roomId: string, playerId: UUID, initialGameState: unknown, secondsPerTurn?: number } */
 export interface GameStartPayload {
   roomId: string;
   playerId: string;
   initialGameState: GameState;
+  secondsPerTurn?: number;
 }
 
 /**
@@ -77,6 +81,18 @@ export interface GameSkipPayload {
   roomId: string;
   playerId: string;
   gameState: GameState;
+}
+
+/** SocketRoomQueueLeaveSchema: { roomId, playerId } */
+export interface RoomQueueLeavePayload {
+  roomId: string;
+  playerId: string;
+}
+
+/** SocketRoomCancelQueueLeaveSchema: { roomId, playerId } */
+export interface RoomCancelQueueLeavePayload {
+  roomId: string;
+  playerId: string;
 }
 
 // ─── Singleton socket service ─────────────────────────────────────────────────
@@ -128,6 +144,16 @@ class SocketService {
    */
   emitGameSkip(payload: GameSkipPayload): void {
     this.socket.emit(CLIENT_EVENTS.GAME_SKIP, payload);
+  }
+
+  /** Queue to leave the room after the current match ends. */
+  emitRoomQueueLeave(payload: RoomQueueLeavePayload): void {
+    this.socket.emit(CLIENT_EVENTS.ROOM_QUEUE_LEAVE, payload);
+  }
+
+  /** Cancel a previously queued room departure. */
+  emitRoomCancelQueueLeave(payload: RoomCancelQueueLeavePayload): void {
+    this.socket.emit(CLIENT_EVENTS.ROOM_CANCEL_QUEUE_LEAVE, payload);
   }
 }
 

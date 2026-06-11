@@ -8,6 +8,9 @@ interface ActionBarProps {
   onSkip: () => void;
   currentPlayerName: string;
   playValidation: PlayValidation;
+  isLocked?: boolean;
+  turnSecondsLeft?: number | null;
+  isUrgent?: boolean;
 }
 
 export function ActionBar({
@@ -18,6 +21,9 @@ export function ActionBar({
   onSkip,
   currentPlayerName,
   playValidation,
+  isLocked = false,
+  turnSecondsLeft = null,
+  isUrgent = false,
 }: ActionBarProps) {
   if (!isPlayerTurn) {
     return (
@@ -37,19 +43,26 @@ export function ActionBar({
 
   return (
     <div className="action-bar">
-      <div className="action-bar__your-turn-label">YOUR TURN</div>
+      <div className="action-bar__your-turn-row">
+        <div className="action-bar__your-turn-label">YOUR TURN</div>
+        {turnSecondsLeft !== null && (
+          <div className={`action-bar__timer${isUrgent ? ' action-bar__timer--urgent' : ''}`}>
+            {String(turnSecondsLeft).padStart(2, '0')}
+          </div>
+        )}
+      </div>
       <div className="action-bar__buttons">
         <button
           className="btn btn--skip"
-          disabled={!canSkip}
+          disabled={!canSkip || isLocked}
           onClick={onSkip}
           title={!canSkip ? 'Must open the trick' : 'Pass this trick'}
         >
           PASS
         </button>
         <button
-          className={`btn btn--play${playValidation.canPlay ? ' btn--play-ready' : ''}`}
-          disabled={!playValidation.canPlay}
+          className={`btn btn--play${playValidation.canPlay && !isLocked ? ' btn--play-ready' : ''}`}
+          disabled={!playValidation.canPlay || isLocked}
           onClick={onPlay}
         >
           {selectedCount > 0

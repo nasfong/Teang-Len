@@ -42,7 +42,7 @@ function join(
 ): ServiceResult<RoomSnapshot> {
   const room = roomStore.get(roomId);
   if (!room) return { ok: false, error: "Room not found", code: 404 };
-  if (room.status !== "waiting")
+  if (room.status === "playing")
     return { ok: false, error: "Game already started", code: 409 };
   if (room.players.length >= room.maxPlayers)
     return { ok: false, error: "Room is full", code: 409 };
@@ -124,16 +124,18 @@ function startGame(
   if (!room) return { ok: false, error: "Room not found", code: 404 };
   if (room.hostPlayerId !== hostPlayerId)
     return { ok: false, error: "Only host can start the game", code: 403 };
-  if (room.status !== "waiting")
-    return { ok: false, error: "Game already started", code: 409 };
+  if (room.status === "playing")
+    return { ok: false, error: "Game already in progress", code: 409 };
   if (room.players.length < 2)
     return { ok: false, error: "Need at least 2 players", code: 409 };
 
   const updated: Room = bumpVersion({
     ...room,
-    status:    "playing",
-    gameState: initialGameState,
-    players:   room.players.map((p) => ({ ...p, status: "playing" })),
+    status:                "playing",
+    gameState:             initialGameState,
+    turnStartedAt:         null,
+    pendingLeavePlayerIds: [],
+    players:               room.players.map((p) => ({ ...p, status: "playing" })),
   });
 
   roomStore.set(updated);
@@ -189,6 +191,73 @@ function markPlayerFinished(
   return { ok: true, data: { snapshot: toRoomSnapshot(updated), rank } };
 }
 
+function queueLeave(
+  roomId: string,
+  playerId: string
+): ServiceResult<RoomSnapshot> {
+  const room = roomStore.get(roomId);
+  if (!room) return { ok: false, error: "Room not found", code: 404 };
+
+  if (room.pendingLeavePlayerIds.includes(playerId)) {
+    return { ok: true, data: toRoomSnapshot(room) }; // idempotent
+  }
+
+  const updated: Room = bumpVersion({
+    ...room,
+    pendingLeavePlayerIds: [...room.pendingLeavePlayerIds, playerId],
+  });
+  roomStore.set(updated);
+  return { ok: true, data: toRoomSnapshot(updated) };
+}
+
+function cancelQueueLeave(
+  roomId: string,
+  playerId: string
+): ServiceResult<RoomSnapshot> {
+  const room = roomStore.get(roomId);
+  if (!room) return { ok: false, error: "Room not found", code: 404 };
+
+  const updated: Room = bumpVersion({
+    ...room,
+    pendingLeavePlayerIds: room.pendingLeavePlayerIds.filter(id => id !== playerId),
+  });
+  roomStore.set(updated);
+  return { ok: true, data: toRoomSnapshot(updated) };
+}
+
+// Called after game:end — processes queued departures and resets room to waiting.
+// Returns null when the room was destroyed (everyone left).
+function endGame(
+  roomId: string
+): ServiceResult<RoomSnapshot | null> {
+  const room = roomStore.get(roomId);
+  if (!room) return { ok: false, error: "Room not found", code: 404 };
+
+  const pendingSet  = new Set(room.pendingLeavePlayerIds);
+  const remaining   = room.players.filter(p => !pendingSet.has(p.playerId));
+
+  if (remaining.length === 0) {
+    roomStore.delete(roomId);
+    return { ok: true, data: null };
+  }
+
+  const hostStays  = remaining.some(p => p.playerId === room.hostPlayerId);
+  const newHostId  = hostStays ? room.hostPlayerId : remaining[0].playerId;
+
+  const updated: Room = bumpVersion({
+    ...room,
+    players:               remaining.map(p => ({ ...p, status: "waiting" as const })),
+    hostPlayerId:          newHostId,
+    status:                "waiting",
+    gameState:             null,
+    turnStartedAt:         null,
+    pendingLeavePlayerIds: [],
+  });
+
+  roomStore.set(updated);
+  return { ok: true, data: toRoomSnapshot(updated) };
+}
+
 function markPlayerDisconnected(
   roomId: string,
   playerId: string
@@ -224,7 +293,9 @@ function reconnectPlayer(
         ? {
             ...p,
             socketId,
-            status:         p.status === "disconnected" ? "playing" : p.status,
+            status:         p.status === "disconnected"
+            ? (room.status === "playing" ? "playing" : "waiting")
+            : p.status,
             reconnectedAt:  Date.now(),
           }
         : p
@@ -245,6 +316,9 @@ export const roomService = {
   startGame,
   applyGameState,
   markPlayerFinished,
+  queueLeave,
+  cancelQueueLeave,
+  endGame,
   markPlayerDisconnected,
   reconnectPlayer,
 };

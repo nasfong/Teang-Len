@@ -13,10 +13,12 @@ interface LobbyStore {
   room:       RoomSnapshot | null;
   seatToPlayerId: Record<number, string>;
   localSeatIndex: number | null;
+  pendingLeave:   boolean;
 
   setPlayer(playerId: string, name: string): void;
   setRoom(room: RoomSnapshot): void;
   clearRoom(): void;
+  setPendingLeave(val: boolean): void;
   reset(): void;
 }
 
@@ -32,6 +34,7 @@ export const useLobbyStore = create<LobbyStore>((set, get) => ({
   room:           null,
   seatToPlayerId: {},
   localSeatIndex: null,
+  pendingLeave:   false,
 
   setPlayer(playerId, name) {
     localStorage.setItem(LS_ID, playerId);
@@ -55,7 +58,11 @@ export const useLobbyStore = create<LobbyStore>((set, get) => ({
   },
 
   clearRoom() {
-    set({ room: null, roomId: null, seatToPlayerId: {}, localSeatIndex: null });
+    set({ room: null, roomId: null, seatToPlayerId: {}, localSeatIndex: null, pendingLeave: false });
+  },
+
+  setPendingLeave(val) {
+    set({ pendingLeave: val });
   },
 
   reset() {
