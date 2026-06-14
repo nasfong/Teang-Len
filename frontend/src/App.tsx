@@ -9,6 +9,8 @@ import { socketService, SERVER_EVENTS } from './services/socket';
 import type { GameState } from './game/types';
 import type { RoomSnapshot } from './services/api';
 import './styles.css';
+import HomePage from './pages/HomePage';
+import RegisterPage from './pages/RegisterPage';
 
 // ── Route guards ──────────────────────────────────────────────────────────────
 
@@ -29,9 +31,9 @@ function CatchAll() {
 // ── App ───────────────────────────────────────────────────────────────────────
 
 export default function App() {
-  const navigate                        = useNavigate();
+  const navigate = useNavigate();
   const { playerId, setRoom } = useLobbyStore();
-  const { syncFromServer, resetGame }   = useGameStore();
+  const { syncFromServer, resetGame } = useGameStore();
 
   // Global socket listeners — scoped to authenticated session
   useEffect(() => {
@@ -72,11 +74,11 @@ export default function App() {
 
   return (
     <Routes>
+      <Route path="/register" element={<RegisterPage />} />
       <Route path="/enter" element={<EnterPage />} />
+      <Route path="/home" element={<HomePage />} />
       <Route path="/room" element={<RequireAuth><RoomPage /></RequireAuth>} />
-      {/* /table (no roomId) redirects to /room */}
       <Route path="/table" element={<Navigate to="/room" replace />} />
-      {/* /table/:roomId — waiting / playing / finished */}
       <Route path="/table/:roomId" element={<RequireAuth><TablePage /></RequireAuth>} />
       <Route path="*" element={<CatchAll />} />
     </Routes>

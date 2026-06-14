@@ -1,5 +1,5 @@
 /* ── Google Fonts ────────────────────────────────────────────────────────────── */
-@import url('https://fonts.googleapis.com/css2?family=Noto+Serif+Khmer:wght@600;700&family=Outfit:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lilita+One&family=Noto+Serif+Khmer:wght@600;700&family=Outfit:wght@400;500;600;700&display=swap');
 
 /* ── Reset ───────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -69,6 +69,10 @@
   --radius-card: 8px;
   --radius-ui:   12px;
   --radius-seat: 14px;
+
+  /* Fonts — bold outlined display face for game UI */
+  --font-display: 'Lilita One', 'Fredoka', 'Comic Sans MS', cursive;
+  --outline-ink:  #1a1a1a;
 }
 
 @media (min-width: 1024px) {
@@ -90,6 +94,37 @@ body {
   color: var(--text-primary);
   font-family: 'Outfit', sans-serif;
   -webkit-font-smoothing: antialiased;
+}
+
+/* ── Outlined display type ───────────────────────────────────────────────────────
+   Arcade / casual-game look: white fill with a black stroke around each letter.
+   `paint-order: stroke fill` lays the stroke BEHIND the fill so glyphs keep their
+   full thickness (no thinning) and stay highly readable. Use on display text that
+   sits on dark or vivid backgrounds — not on light panels or small body copy. */
+.text-outline {
+  font-family: var(--font-display);
+  font-weight: 400;            /* Lilita One ships a single heavy weight */
+  color: #fff;
+  -webkit-text-stroke: 2px var(--outline-ink);
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.30), 0 4px 7px rgba(0,0,0,0.28);
+  letter-spacing: 0.03em;
+}
+
+/* Thinner stroke variant for smaller labels (buttons, badges) */
+.text-outline--sm {
+  -webkit-text-stroke-width: 1.5px;
+  text-shadow: 0 1px 0 rgba(0,0,0,0.30);
+}
+
+/* Fallback for the rare engine without text-stroke: simulate the ring via shadows */
+@supports not ((-webkit-text-stroke: 1px #000) or (text-stroke: 1px #000)) {
+  .text-outline {
+    text-shadow:
+      -2px -2px 0 var(--outline-ink),  2px -2px 0 var(--outline-ink),
+      -2px  2px 0 var(--outline-ink),  2px  2px 0 var(--outline-ink),
+       0   3px 0 rgba(0,0,0,0.30);
+  }
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════════
@@ -1141,9 +1176,10 @@ body {
   padding: 0 18px;
   height: 50px;
   min-height: 50px;
-  font-family: 'Outfit', sans-serif;
-  font-size: 0.92rem;
-  font-weight: 700;
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 400;
+  line-height: 1;
   cursor: pointer;
   transition: transform 0.10s var(--ease-spring), box-shadow 0.12s, opacity 0.15s;
   user-select: none;
@@ -1176,7 +1212,10 @@ body {
     0 4px 18px rgba(34,197,94,0.55),
     0 1px 0 rgba(255,255,255,0.32) inset,
     0 -2px 0 rgba(0,0,0,0.12) inset;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  /* -webkit-text-stroke: 1.5px var(--outline-ink); */
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.28);
+  letter-spacing: 0.04em;
 }
 .btn--play-ready:hover { background: linear-gradient(180deg, #86efac 0%, #4ade80 48%, #22c55e 100%); }
 
@@ -1208,14 +1247,16 @@ body {
   padding: 14px 36px;
   height: auto;
   min-height: 0;
-  font-size: 0.95rem;
-  font-weight: 700;
-  letter-spacing: 0.5px;
+  font-size: 1rem;
+  font-weight: 400;
+  letter-spacing: 0.04em;
   box-shadow:
     0 4px 20px rgba(249,115,22,0.48),
     0 1px 0 rgba(255,255,255,0.28) inset,
     0 -2px 0 rgba(0,0,0,0.12) inset;
-  text-shadow: 0 1px 2px rgba(0,0,0,0.18);
+  -webkit-text-stroke: 1.5px var(--outline-ink);
+  paint-order: stroke fill;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.28);
   transition: background 0.15s, transform 0.12s, box-shadow 0.15s;
 }
 .btn--deal:hover {
@@ -1630,13 +1671,15 @@ body {
 
 .deal-banner__text {
   display: block;
-  font-family: 'Outfit', sans-serif;
-  font-size: clamp(1.6rem, 5vw, 2.4rem);
-  font-weight: 800;
-  letter-spacing: 7px;
+  font-family: var(--font-display);
+  font-size: clamp(1.8rem, 5.5vw, 2.7rem);
+  font-weight: 400;
+  letter-spacing: 5px;
   text-transform: uppercase;
   color: #fff;
-  text-shadow: 0 0 32px rgba(249,115,22,0.75), 0 2px 5px rgba(0,0,0,0.6);
+  -webkit-text-stroke: 2.5px var(--outline-ink);
+  paint-order: stroke fill;
+  text-shadow: 0 0 32px rgba(249,115,22,0.75), 0 3px 0 rgba(0,0,0,0.5), 0 5px 8px rgba(0,0,0,0.55);
   white-space: nowrap;
 }
 
@@ -1645,4 +1688,87 @@ body {
   18%  { opacity: 1; transform: translate(-50%, -50%) scale(1.04); }
   55%  { opacity: 1; transform: translate(-50%, -50%) scale(1.0); }
   100% { opacity: 0; transform: translate(-50%, -50%) scale(1.08); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   HOME PAGE — PLAY button
+═══════════════════════════════════════════════════════════════════════════════ */
+
+.play-btn {
+  position: relative;
+  padding: 16px 36px;
+  font-family: 'Fredoka', 'Comic Sans MS', cursive;
+  font-weight: 700;
+  font-size: 22px;
+  color: #ffffff;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  border-radius: 28px;
+  background: #22c55e;
+  border: none;
+  border-bottom: 8px solid #15803d;
+  box-shadow: 0 15px 25px -10px rgba(34,197,94,0.8);
+  cursor: pointer;
+  transition: all 100ms;
+  outline: none;
+}
+
+.play-btn:hover {
+  background: #16a34a;
+  box-shadow: 0 18px 30px -10px rgba(34,197,94,0.9);
+}
+
+.play-btn:active {
+  border-bottom-width: 0;
+  transform: translateY(8px);
+  box-shadow: 0 6px 14px -6px rgba(34,197,94,0.7);
+}
+
+.play-btn:focus-visible {
+  box-shadow: 0 15px 25px -10px rgba(34,197,94,0.8), 0 0 0 4px rgba(74,222,128,0.5);
+}
+
+/* Bottom dark gradient overlay */
+.play-btn__overlay {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 16px;
+  background: linear-gradient(to top, rgba(0,0,0,0.22) 0%, transparent 55%);
+  pointer-events: none;
+}
+
+/* Top-left gloss blob */
+.play-btn__gloss {
+  position: absolute;
+  top: 8px;
+  left: 14px;
+  width: 28px;
+  height: 13px;
+  border-radius: 9999px;
+  background: rgba(255,255,255,0.45);
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+/* Icon + label row */
+.play-btn__content {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  filter: drop-shadow(0 1px 3px rgba(0,0,0,0.28));
+}
+
+.play-btn__icon {
+  width: 26px;
+  height: 26px;
+  animation: play-icon-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes play-icon-pulse {
+  0%, 100% { opacity: 1;    transform: scale(1); }
+  50%       { opacity: 0.6; transform: scale(0.92); }
 }
