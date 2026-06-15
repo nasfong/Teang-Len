@@ -1,6 +1,15 @@
 /* ── Google Fonts ────────────────────────────────────────────────────────────── */
 @import url('https://fonts.googleapis.com/css2?family=Lilita+One&family=Noto+Serif+Khmer:wght@600;700&family=Outfit:wght@400;500;600;700&display=swap');
 
+/* ── Tailwind CSS ────────────────────────────────────────────────────────────── */
+@import 'tailwindcss';
+
+/* ── Tailwind theme tokens (chunky blue identity) ─────────────────────────────── */
+@theme {
+  --font-game: 'Lilita One', 'Fredoka', 'Comic Sans MS', cursive;
+  --color-panel-edge: #00376B;
+}
+
 /* ── Reset ───────────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -94,6 +103,20 @@ body {
   color: var(--text-primary);
   font-family: 'Outfit', sans-serif;
   -webkit-font-smoothing: antialiased;
+  /* Global rule: every text element carries a shadow (text-shadow inherits).
+     Light-on-dark default; dark-on-light surfaces opt into a light emboss below. */
+  text-shadow: 0 1px 2px rgba(0,0,0,0.45);
+}
+
+/* Dark text on light/white surfaces — subtle light emboss keeps letters crisp */
+.card__rank,
+.card__suit-sm,
+.card__center,
+.pzone__name,
+.wait-seat__name,
+.results__title,
+.result-row__name {
+  text-shadow: 0 1px 1px rgba(255,255,255,0.6);
 }
 
 /* ── Outlined display type ───────────────────────────────────────────────────────
@@ -791,6 +814,21 @@ body {
 /* Side opponents: count in info panel is enough on mobile */
 .pzone--left .opp-hand,
 .pzone--right .opp-hand { display: none; }
+
+/* Register form inputs — white placeholder text */
+.register-input::placeholder {
+  color: #fff;
+  opacity: 1;
+  text-shadow:
+    -2px -2px 0 #00376B,
+    2px -2px 0 #00376B,
+    -2px 2px 0 #00376B,
+    2px 2px 0 #00376B,
+    0 -2px 0 #00376B,
+    0 2px 0 #00376B,
+    -2px 0 0 #00376B,
+    2px 0 0 #00376B;
+}
 
 /* ═══════════════════════════════════════════════════════════════════════════════
    PLACEHOLDER SEAT — empty seat with pulsing ring

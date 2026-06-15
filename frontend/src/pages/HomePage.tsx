@@ -382,18 +382,9 @@ const Footer = () => {
 
 export default function HomePage() {
   return (
-    <div
-      style={{
-        width: '100vw',
-        height: '100vh',
-        backgroundImage: "url('/background.png')",
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
+    <>
       <Header />
       <Footer />
-    </div>
+    </>
   );
 }

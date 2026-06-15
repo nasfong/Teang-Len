@@ -11,6 +11,7 @@ import type { RoomSnapshot } from './services/api';
 import './styles.css';
 import HomePage from './pages/HomePage';
 import RegisterPage from './pages/RegisterPage';
+import Layout from './layout/Layout';
 
 // ── Route guards ──────────────────────────────────────────────────────────────
 
@@ -74,13 +75,15 @@ export default function App() {
 
   return (
     <Routes>
-      <Route path="/register" element={<RegisterPage />} />
-      <Route path="/enter" element={<EnterPage />} />
-      <Route path="/home" element={<HomePage />} />
-      <Route path="/room" element={<RequireAuth><RoomPage /></RequireAuth>} />
-      <Route path="/table" element={<Navigate to="/room" replace />} />
-      <Route path="/table/:roomId" element={<RequireAuth><TablePage /></RequireAuth>} />
-      <Route path="*" element={<CatchAll />} />
+      <Route element={<Layout />}>
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/enter" element={<EnterPage />} />
+        <Route path="/home" element={<HomePage />} />
+        <Route path="/room" element={<RequireAuth><RoomPage /></RequireAuth>} />
+        <Route path="/table" element={<Navigate to="/room" replace />} />
+        <Route path="/table/:roomId" element={<RequireAuth><TablePage /></RequireAuth>} />
+        <Route path="*" element={<CatchAll />} />
+      </Route>
     </Routes>
   );
 }
