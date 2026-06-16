@@ -60,12 +60,11 @@ const KeyIcon = () => (
 
 const DEPTH = 6;
 
-const RegisterPage = () => {
+const LoginPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [pressed, setPressed] = useState(false);
   const [hovered, setHovered] = useState(false);
-
 
   return (
     <div
@@ -119,7 +118,7 @@ const RegisterPage = () => {
             `,
           }}
         >
-          REGISTER
+          LOGIN
         </h1>
 
         {/* Username */}
@@ -215,12 +214,12 @@ const RegisterPage = () => {
                 `,
               }}
             >
-              Sign Up
+              Log In
             </button>
           </div>
         </div>
 
-        {/* Navigate to Login */}
+        {/* Navigate to Register */}
         <p
           style={{
             margin: '24px 0 0',
@@ -231,16 +230,16 @@ const RegisterPage = () => {
             textShadow: '0 1px 2px rgba(0,0,0,0.45)',
           }}
         >
-          Have an account?{' '}
+          No account?{' '}
           <Link
-            to="/login"
+            to="/register"
             style={{
               color: C.accent,
               textDecoration: 'none',
               textShadow: `0 1px 0 ${C.panelEdge}, 0 1px 3px rgba(0,0,0,0.4)`,
             }}
           >
-            Log In
+            Sign Up
           </Link>
         </p>
       </div>
@@ -248,4 +247,4 @@ const RegisterPage = () => {
   );
 };
 
-export default RegisterPage;
+export default LoginPage;

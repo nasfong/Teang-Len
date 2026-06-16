@@ -25,35 +25,35 @@ export function ActionBar({
   turnSecondsLeft = null,
   isUrgent = false,
 }: ActionBarProps) {
+  // Not your turn → subtle floating hint (no buttons), matching the reference.
   if (!isPlayerTurn) {
     return (
-      <div className="action-bar action-bar--waiting">
-        <div className="action-bar__hint">
-          ⌛ {currentPlayerName}'s turn…
-        </div>
+      <div className="table-actions table-actions--waiting">
+        <div className="table-actions__hint">⌛ {currentPlayerName}'s turn…</div>
       </div>
     );
   }
 
+  const beatReady = playValidation.canPlay && !isLocked;
   const hintText = playValidation.reason
     ? playValidation.reason
-    : playValidation.canPlay && selectedCount > 0
-      ? `${selectedCount} card${selectedCount > 1 ? 's' : ''} selected · tap to deselect`
-      : null;
+    : beatReady && selectedCount > 0
+      ? `${selectedCount} card${selectedCount > 1 ? 's' : ''} selected`
+      : !canSkip
+        ? 'Pick cards to open the trick'
+        : null;
 
   return (
-    <div className="action-bar">
-      <div className="action-bar__your-turn-row">
-        <div className="action-bar__your-turn-label">YOUR TURN</div>
-        {turnSecondsLeft !== null && (
-          <div className={`action-bar__timer${isUrgent ? ' action-bar__timer--urgent' : ''}`}>
-            {String(turnSecondsLeft).padStart(2, '0')}
-          </div>
-        )}
-      </div>
-      <div className="action-bar__buttons">
+    <div className="table-actions">
+      {turnSecondsLeft !== null && (
+        <div className={`table-actions__timer${isUrgent ? ' table-actions__timer--urgent' : ''}`}>
+          {String(turnSecondsLeft).padStart(2, '0')}
+        </div>
+      )}
+
+      <div className="table-actions__buttons">
         <button
-          className="btn btn--skip"
+          className="action-pill action-pill--pass"
           disabled={!canSkip || isLocked}
           onClick={onSkip}
           title={!canSkip ? 'Must open the trick' : 'Pass this trick'}
@@ -61,18 +61,17 @@ export function ActionBar({
           PASS
         </button>
         <button
-          className={`btn btn--play${playValidation.canPlay && !isLocked ? ' btn--play-ready' : ''}`}
-          disabled={!playValidation.canPlay || isLocked}
+          className={`action-pill action-pill--beat${beatReady ? ' action-pill--beat-ready' : ''}`}
+          disabled={!beatReady}
           onClick={onPlay}
         >
-          {selectedCount > 0
-            ? <>PLAY <span className="btn__badge">{selectedCount}</span></>
-            : 'SELECT CARDS'
-          }
+          BEAT
+          {selectedCount > 0 && <span className="action-pill__badge">{selectedCount}</span>}
         </button>
       </div>
+
       {hintText && (
-        <div className={`action-bar__hint${playValidation.reason ? ' action-bar__hint--invalid' : ''}`}>
+        <div className={`table-actions__hint${playValidation.reason ? ' table-actions__hint--invalid' : ''}`}>
           {hintText}
         </div>
       )}

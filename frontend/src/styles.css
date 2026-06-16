@@ -350,12 +350,15 @@ body {
 
 .table__center {
   display: flex;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
+  gap: 10px;
   height: 100%;
 }
 
 .table__bottom {
+  position: relative;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -1809,4 +1812,274 @@ body {
 @keyframes play-icon-pulse {
   0%, 100% { opacity: 1;    transform: scale(1); }
   50%       { opacity: 0.6; transform: scale(0.92); }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════════
+   TABLE REDESIGN — image-style layout (stat cluster, LEAVE, centered actions,
+   coin badges, corner widgets). Keeps the existing blue casual palette.
+═══════════════════════════════════════════════════════════════════════════════ */
+
+/* ── HUD stat cluster (top-left) ─────────────────────────────────────────────── */
+.hud__stats {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: 1;
+  min-width: 0;
+}
+
+.hud__stat {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  background: rgba(0,0,0,0.32);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 10px;
+  padding: 5px 10px;
+  white-space: nowrap;
+}
+
+.hud__stat-icon { font-size: 0.9rem; line-height: 1; }
+.hud__stat-icon--gems { filter: drop-shadow(0 0 4px rgba(245,158,11,0.5)); }
+
+.hud__stat-val {
+  font-size: 0.82rem;
+  font-weight: 800;
+  color: #fff;
+  line-height: 1;
+}
+
+.hud__stat-label {
+  font-size: 0.5rem;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+  color: var(--text-muted);
+  text-transform: uppercase;
+}
+
+.hud__signal {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  padding: 3px 8px;
+}
+.hud__signal-icon { font-size: 0.95rem; line-height: 1; color: #4ade80; }
+.hud__signal-label {
+  font-size: 0.48rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+  color: var(--text-muted);
+}
+
+/* ── LEAVE button (top-right) ────────────────────────────────────────────────── */
+.hud__leave-btn {
+  background: linear-gradient(180deg, #f87171 0%, #ef4444 52%, #c8312b 100%);
+  border: none;
+  color: #fff;
+  border-radius: 12px;
+  padding: 9px 22px;
+  font-family: var(--font-display);
+  font-size: 0.92rem;
+  font-weight: 400;
+  letter-spacing: 1px;
+  cursor: pointer;
+  box-shadow:
+    0 4px 16px rgba(239,68,68,0.5),
+    0 1px 0 rgba(255,255,255,0.3) inset,
+    0 -2px 0 rgba(0,0,0,0.18) inset;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.28);
+  transition: transform 0.1s var(--ease-spring), box-shadow 0.15s;
+}
+.hud__leave-btn:hover { box-shadow: 0 6px 22px rgba(239,68,68,0.62), 0 1px 0 rgba(255,255,255,0.3) inset; }
+.hud__leave-btn:active { transform: scale(0.94); }
+.hud__leave-btn--queued {
+  background: linear-gradient(180deg, #fbbf24 0%, #f59e0b 100%);
+  box-shadow: 0 4px 16px rgba(245,158,11,0.45), 0 1px 0 rgba(255,255,255,0.3) inset;
+}
+
+/* ── Coin badge under opponent avatar ────────────────────────────────────────── */
+.pzone__coins {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 3px;
+  background: rgba(0,0,0,0.35);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 999px;
+  padding: 2px 9px;
+  font-size: 0.64rem;
+  font-weight: 800;
+  color: #ffd27a;
+  white-space: nowrap;
+}
+.pzone__coins-icon { font-size: 0.7rem; }
+
+/* ── Centered action pills (PASS / BEAT) on the felt ─────────────────────────── */
+.table-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  z-index: 3;
+}
+
+.table-actions--waiting { min-height: 0; }
+
+.table-actions__buttons {
+  display: flex;
+  gap: 14px;
+}
+
+.action-pill {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 130px;
+  height: 58px;
+  padding: 0 28px;
+  border: none;
+  border-radius: 16px;
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  font-weight: 400;
+  letter-spacing: 1px;
+  color: #fff;
+  cursor: pointer;
+  text-shadow: 0 2px 0 rgba(0,0,0,0.3);
+  transition: transform 0.1s var(--ease-spring), box-shadow 0.15s, filter 0.15s;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+.action-pill:active { transform: scale(0.93); }
+.action-pill:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+.action-pill--pass {
+  background: linear-gradient(180deg, #f87171 0%, #ef4444 52%, #c8312b 100%);
+  box-shadow:
+    0 5px 18px rgba(239,68,68,0.5),
+    0 1px 0 rgba(255,255,255,0.32) inset,
+    0 -3px 0 rgba(0,0,0,0.2) inset;
+}
+.action-pill--pass:hover:not(:disabled) { filter: brightness(1.08); }
+
+.action-pill--beat {
+  background: linear-gradient(180deg, #4ade80 0%, #22c55e 50%, #15a04a 100%);
+  box-shadow:
+    0 5px 18px rgba(34,197,94,0.5),
+    0 1px 0 rgba(255,255,255,0.32) inset,
+    0 -3px 0 rgba(0,0,0,0.2) inset;
+}
+.action-pill--beat:hover:not(:disabled) { filter: brightness(1.08); }
+.action-pill--beat-ready { animation: beat-glow 1.4s ease-in-out infinite; }
+
+@keyframes beat-glow {
+  0%, 100% { box-shadow: 0 5px 18px rgba(34,197,94,0.5), 0 1px 0 rgba(255,255,255,0.32) inset, 0 -3px 0 rgba(0,0,0,0.2) inset; }
+  50%       { box-shadow: 0 6px 26px rgba(34,197,94,0.8), 0 1px 0 rgba(255,255,255,0.32) inset, 0 -3px 0 rgba(0,0,0,0.2) inset; }
+}
+
+.action-pill__badge {
+  background: rgba(0,0,0,0.24);
+  border-radius: 6px;
+  padding: 2px 8px;
+  font-size: 0.95rem;
+  font-weight: 800;
+}
+
+.table-actions__timer {
+  background: rgba(249,115,22,0.16);
+  border: 1.5px solid rgba(249,115,22,0.42);
+  color: var(--accent-bright);
+  border-radius: 8px;
+  padding: 2px 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+.table-actions__timer--urgent {
+  background: rgba(239,68,68,0.18);
+  border-color: rgba(239,68,68,0.55);
+  color: #fca5a5;
+  animation: timer-pulse 0.7s ease infinite;
+}
+
+.table-actions__hint {
+  font-size: 0.66rem;
+  color: var(--text-secondary);
+  letter-spacing: 0.3px;
+  background: rgba(0,0,0,0.3);
+  padding: 3px 10px;
+  border-radius: 8px;
+}
+.table-actions__hint--invalid { color: #fbbf24; }
+
+/* ── Local player badge (bottom-left) ────────────────────────────────────────── */
+.table__me-badge {
+  position: absolute;
+  left: 10px;
+  bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0,0,0,0.34);
+  border: 1px solid rgba(255,255,255,0.10);
+  border-radius: 14px;
+  padding: 6px 12px 6px 6px;
+  z-index: 4;
+  pointer-events: none;
+}
+.table__me-avatar {
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #4f46e5, #3b82f6);
+  border: 2px solid rgba(255,255,255,0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: #fff;
+  flex-shrink: 0;
+}
+.table__me-meta { display: flex; flex-direction: column; gap: 2px; }
+.table__me-name {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #fff;
+  max-width: 110px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.table__me-coins { font-size: 0.66rem; font-weight: 800; color: #ffd27a; }
+
+/* ── Sort hand button (bottom-right) ─────────────────────────────────────────── */
+.table__sort-btn {
+  position: absolute;
+  right: 10px;
+  bottom: 12px;
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  background: linear-gradient(180deg, #65b7f2 0%, #2b7fc9 100%);
+  border: 2px solid rgba(255,255,255,0.25);
+  color: #fff;
+  font-size: 1.2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 4;
+  box-shadow: 0 4px 14px rgba(43,127,201,0.5), 0 1px 0 rgba(255,255,255,0.3) inset;
+  transition: transform 0.1s var(--ease-spring);
+  -webkit-tap-highlight-color: transparent;
+}
+.table__sort-btn:active { transform: scale(0.9); }
+
+@media (max-width: 640px) {
+  .hud__stat-label, .hud__signal-label { display: none; }
+  .action-pill { min-width: 108px; height: 52px; font-size: 1.2rem; }
+  .table__me-name { max-width: 70px; }
 }

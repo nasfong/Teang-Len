@@ -17,6 +17,8 @@ interface PlayerZoneProps {
   turnSecondsLeft?: number | null;
   isUrgent?: boolean;
   isEndgame?: boolean;
+  /** Visual-only placeholder until the backend exposes balances (see TablePage). */
+  coins?: string;
 }
 
 const RANK_EMOJI: Record<number, string> = { 1: '🥇', 2: '🥈', 3: '🥉', 4: '🏅' };
@@ -36,6 +38,7 @@ export function PlayerZone({
   turnSecondsLeft = null,
   isUrgent = false,
   isEndgame = false,
+  coins,
 }: PlayerZoneProps) {
   const isFinished = player.rank !== null;
   const isVertical = position === 'left' || position === 'right';
@@ -72,6 +75,12 @@ export function PlayerZone({
             turnSecondsLeft !== null
               ? <div className={`pzone__timer${isUrgent ? ' pzone__timer--urgent' : ''}`}>{String(turnSecondsLeft).padStart(2, '0')}</div>
               : <div className="pzone__turn-arrow">▶</div>
+          )}
+          {coins && (
+            <div className="pzone__coins">
+              <span className="pzone__coins-icon">🪙</span>
+              {coins}
+            </div>
           )}
         </div>
       )}

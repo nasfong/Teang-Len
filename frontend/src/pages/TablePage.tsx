@@ -5,42 +5,22 @@ import { useLobbyStore } from '../store/lobbyStore';
 import { socketService } from '../services/socket';
 import { useTableHydration } from '../features/table/hooks/useTableHydration';
 import { useSeatMapping } from '../features/table/hooks/useSeatMapping';
-import { useDealAnimation } from '../features/table/hooks/useDealAnimation';
-import { useTurnTimer } from '../features/table/hooks/useTurnTimer';
 import { WaitingTable } from '../features/table/components/WaitingTable';
-import { PlayerZone } from '../features/table/components/PlayerZone';
-import { TrickArea } from '../features/table/components/TrickArea';
-import { ActionBar } from '../features/table/components/ActionBar';
-import { GameLog } from '../features/table/components/GameLog';
-import { PlaceholderSeat } from '../features/table/components/PlaceholderSeat';
-import { TableHUD } from '../features/table/components/TableHUD';
-import { GameStartBanner } from '../features/table/components/GameStartBanner';
-import { isGameLogEnabled } from '../game/rules/rules';
-import { validatePlay } from '../game/engine/validation';
-import type { PlayerId } from '../game/types';
-import type { PlayValidation } from '../game/engine/validation';
+import { GameTable } from '../features/table/components/gametable/GameTable';
 
 export function TablePage() {
   const { roomId: roomIdParam } = useParams<{ roomId?: string }>();
   const navigate = useNavigate();
 
-  const {
-    game, error, selectedCardIds,
-    selectCard, playSelectedCards, skipCurrentTurn,
-    clearError, clearGameState, resetGame, startGame,
-  } = useGameStore();
-
-  const { playerId, playerName, room, localSeatIndex } = useLobbyStore();
+  const { game, error, clearError, clearGameState, resetGame, startGame } = useGameStore();
+  const { playerId, room, localSeatIndex } = useLobbyStore();
 
   const { hydrateError } = useTableHydration(roomIdParam);
 
   const numPlayers = game ? game.players.length : (room?.maxPlayers ?? 4);
   const { seatBottom, seatRight, seatTop, seatLeft } = useSeatMapping(localSeatIndex, numPlayers);
 
-  // Must be called before any early returns — Rules of Hooks
-  const { dealPhase, revealedCount, dealOrder, bombCardIds, isLocked, showBanner } = useDealAnimation(game, localSeatIndex);
-  const { secondsLeft, isUrgent, notification } = useTurnTimer(game, localSeatIndex);
-
+  // Auto-clear transient errors
   useEffect(() => {
     if (!error) return;
     const t = setTimeout(clearError, 3000);
@@ -70,18 +50,6 @@ export function TablePage() {
     navigate('/room');
   }
 
-  function handleQueueLeave(): void {
-    if (roomIdParam && playerId) {
-      socketService.emitRoomQueueLeave({ roomId: roomIdParam, playerId });
-    }
-  }
-
-  function handleCancelLeave(): void {
-    if (roomIdParam && playerId) {
-      socketService.emitRoomCancelQueueLeave({ roomId: roomIdParam, playerId });
-    }
-  }
-
   if (!roomIdParam) return <Navigate to="/room" replace />;
 
   if (!room && !hydrateError) {
@@ -108,8 +76,7 @@ export function TablePage() {
   const playerCount = room?.players.length ?? 0;
   const maxSeats    = room?.maxPlayers ?? 4;
 
-  // ── State B — Waiting ──────────────────────────────────────────────────────
-
+  // ── State B — Waiting room ──────────────────────────────────────────────────
   if (!game) {
     return (
       <WaitingTable
@@ -125,122 +92,32 @@ export function TablePage() {
     );
   }
 
-  // ── State C — Playing (+ endgame result display) ──────────────────────────
-
-  const isEndgame         = game.phase === 'game_over';
-  const isPlayerTurn      = !isEndgame && game.currentPlayer === seatBottom;
-  const canSkip           = game.currentTrick.currentHand !== null;
-  const currentPlayerName = game.players[game.currentPlayer].name;
-  const playerNames       = game.players.map(p => p.name);
-  const isQueuedToLeave   = room?.pendingLeavePlayerIds?.includes(playerId ?? '') ?? false;
-
-  const selectedCards = game.players[seatBottom].hand.filter(c => selectedCardIds.includes(c.id));
-  const playValidation: PlayValidation = isPlayerTurn
-    ? validatePlay(selectedCards, game.currentTrick.currentHand)
-    : { canPlay: false, reason: '' };
-
-  function renderOpponent(seat: PlayerId | null, position: 'top' | 'left' | 'right') {
-    if (seat === null) return <PlaceholderSeat />;
-    const isTurn = !isEndgame && game!.currentPlayer === seat;
-    return (
-      <PlayerZone
-        player={game!.players[seat]}
-        isCurrentTurn={isTurn}
-        isHuman={false}
-        position={position}
-        turnSecondsLeft={isTurn ? secondsLeft : null}
-        isUrgent={isTurn ? isUrgent : false}
-        isEndgame={isEndgame}
-      />
-    );
-  }
-
-  const tableClass = numPlayers === 2 ? 'table table--two-player' : 'table';
-
+  // ── State C / D — Active play + endgame ─────────────────────────────────────
   return (
-    <div className={isGameLogEnabled() ? 'game-root game-root--log' : 'game-root'}>
-      <GameStartBanner show={showBanner} />
-
+    <>
+      <GameTable onLeave={handleLeave} />
       {error && (
-        <div className="toast toast--error" onClick={clearError}>
+        <div
+          onClick={clearError}
+          style={{
+            position: 'fixed',
+            top: 76,
+            left: '50%',
+            transform: 'translateX(-50%)',
+            zIndex: 50,
+            padding: '10px 20px',
+            borderRadius: 14,
+            background: 'rgba(168,40,32,0.95)',
+            color: '#fff',
+            fontFamily: "'Lilita One', 'Fredoka', 'Comic Sans MS', cursive",
+            fontSize: 15,
+            boxShadow: '0 6px 16px rgba(0,0,0,0.4)',
+            cursor: 'pointer',
+          }}
+        >
           ⚠ {error}
         </div>
       )}
-      {notification && (
-        <div className="toast toast--info">{notification}</div>
-      )}
-
-      <div className={tableClass}>
-
-        {/* HUD — replaces old RoomHeader + turn-pill overlays */}
-        <div className="table__hud">
-          <TableHUD
-            playerName={playerName}
-            roomId={roomIdParam}
-            playerCount={game.players.length}
-            maxSeats={maxSeats}
-            isPlaying={!isEndgame}
-            isQueuedToLeave={isQueuedToLeave}
-            onQueueLeave={handleQueueLeave}
-            onCancelLeave={handleCancelLeave}
-          />
-        </div>
-
-        <div className="table__top">
-          {renderOpponent(seatTop, 'top')}
-        </div>
-
-        <div className="table__middle">
-          <div className="table__side table__side--left">
-            {renderOpponent(seatLeft, 'left')}
-          </div>
-
-          <div className="table__center">
-            {!isEndgame && <TrickArea trick={game.currentTrick} playerNames={playerNames} />}
-          </div>
-
-          <div className="table__side table__side--right">
-            {renderOpponent(seatRight, 'right')}
-          </div>
-        </div>
-
-        <div className="table__bottom">
-          {!isEndgame && (
-            <ActionBar
-              selectedCount={selectedCardIds.length}
-              canSkip={canSkip}
-              isPlayerTurn={isPlayerTurn}
-              onPlay={playSelectedCards}
-              onSkip={skipCurrentTurn}
-              currentPlayerName={currentPlayerName}
-              playValidation={playValidation}
-              isLocked={isLocked}
-              turnSecondsLeft={isPlayerTurn ? secondsLeft : null}
-              isUrgent={isPlayerTurn ? isUrgent : false}
-            />
-          )}
-          <PlayerZone
-            player={game.players[seatBottom]}
-            isCurrentTurn={isPlayerTurn}
-            isHuman={true}
-            selectedCardIds={isEndgame ? [] : selectedCardIds}
-            onCardClick={isEndgame || isLocked ? undefined : selectCard}
-            position="bottom"
-            dealPhase={dealPhase}
-            revealedCount={revealedCount}
-            dealOrder={dealOrder}
-            bombCardIds={bombCardIds}
-            isEndgame={isEndgame}
-          />
-        </div>
-
-      </div>
-
-      {isGameLogEnabled() && (
-        <div className="sidebar">
-          <GameLog entries={game.log} />
-        </div>
-      )}
-    </div>
+    </>
   );
 }

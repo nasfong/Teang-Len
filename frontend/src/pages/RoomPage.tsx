@@ -5,17 +5,94 @@ import { socketService } from '../services/socket';
 import { api } from '../services/api';
 import { useRoomList } from '../features/room/hooks/useRoomList';
 import { RoomCard } from '../features/room/components/RoomCard';
+import { CreateRoomModal, type CreateRoomOptions } from '../features/room/components/CreateRoomModal';
 import type { RoomSnapshot } from '../services/api';
 
+// ── Cartoon design tokens ─────────────────────────────────────────────────────
+const C = {
+  edge: '#00376B',
+  panel: 'rgba(120,185,235,0.32)',
+  panelEdge: 'rgba(255,255,255,0.45)',
+  accent: '#FFD27A',
+  btnOuter: '#2F6614',
+  btnFaceTop: '#8FE04A',
+  btnFaceMid: '#6FCB33',
+  btnFaceBot: '#5BB528',
+  btnBase: '#3F861C',
+  btnBaseDark: '#2F6614',
+} as const;
+
+const FONT = "'Lilita One', 'Fredoka', 'Comic Sans MS', cursive";
+
+const STROKE = (color: string, w = 2) =>
+  `${-w}px ${-w}px 0 ${color}, ${w}px ${-w}px 0 ${color}, ${-w}px ${w}px 0 ${color}, ${w}px ${w}px 0 ${color}`;
+
+// ── Create button ─────────────────────────────────────────────────────────────
+const DEPTH = 6;
+
+function CreateButton({ label, disabled, onClick }: { label: string; disabled: boolean; onClick: () => void }) {
+  const [pressed, setPressed] = useState(false);
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      style={{
+        borderRadius: 26,
+        background: `linear-gradient(180deg, ${C.btnBase} 0%, ${C.btnBaseDark} 100%)`,
+        padding: `0 0 ${DEPTH}px 0`,
+        border: `3px solid ${C.btnOuter}`,
+        opacity: disabled ? 0.6 : 1,
+        filter: 'drop-shadow(0 8px 10px rgba(30,70,15,0.4))',
+      }}
+    >
+      <button
+        type="button"
+        onClick={onClick}
+        disabled={disabled}
+        onMouseDown={() => setPressed(true)}
+        onMouseUp={() => setPressed(false)}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => {
+          setHovered(false);
+          setPressed(false);
+        }}
+        onTouchStart={() => setPressed(true)}
+        onTouchEnd={() => setPressed(false)}
+        style={{
+          display: 'block',
+          margin: -3,
+          padding: '12px 60px',
+          borderRadius: 28,
+          border: `3px solid ${C.btnOuter}`,
+          borderBottom: 'none',
+          background: `linear-gradient(180deg, ${C.btnFaceTop} 0%, ${C.btnFaceMid} 55%, ${C.btnFaceBot} 100%)`,
+          boxShadow: 'inset 0 3px 0 rgba(255,255,255,0.4), inset 0 -3px 0 rgba(0,0,0,0.25)',
+          transform: `translateY(${pressed ? DEPTH : hovered && !disabled ? -1.5 : 0}px)`,
+          transition: 'transform 130ms cubic-bezier(0.34, 1.4, 0.64, 1)',
+          cursor: disabled ? 'default' : 'pointer',
+          outline: 'none',
+          color: '#fff',
+          fontFamily: FONT,
+          fontSize: 24,
+          textShadow: `${STROKE(C.btnOuter, 2)}, 0 4px 4px rgba(20,60,10,0.4)`,
+        }}
+      >
+        {label}
+      </button>
+    </div>
+  );
+}
+
+// ── Page ──────────────────────────────────────────────────────────────────────
 export function RoomPage() {
   const navigate = useNavigate();
-  const { playerId, playerName, roomId: currentRoomId, setRoom } = useLobbyStore();
-  const { rooms, loadingRooms, fetchRooms } = useRoomList();
+  const { playerId, roomId: currentRoomId, setRoom } = useLobbyStore();
+  const { rooms, loadingRooms } = useRoomList();
 
   const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
-  const [creatingRoom, setCreatingRoom]   = useState(false);
-  const [maxPlayersChoice, setMaxPlayersChoice] = useState(4);
-  const [pageError, setPageError]         = useState<string | null>(null);
+  const [creatingRoom, setCreatingRoom] = useState(false);
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [pageError, setPageError] = useState<string | null>(null);
 
   // If already in a room (e.g. back-navigation), go straight to it
   useEffect(() => {
@@ -29,12 +106,14 @@ export function RoomPage() {
     navigate(`/table/${snapshot.roomId}`);
   }
 
-  async function handleCreateRoom(): Promise<void> {
+  // Only `maxPlayers` is persisted by the backend; roomName/gameMode/betAmount
+  // are UI-only until the backend gains fields for them.
+  async function handleCreateRoom(opts: CreateRoomOptions): Promise<void> {
     if (!playerId) return;
     setCreatingRoom(true);
     setPageError(null);
     try {
-      const snapshot = await api.createRoom(playerId, maxPlayersChoice);
+      const snapshot = await api.createRoom(playerId, opts.maxPlayers);
       enterRoom(snapshot, playerId);
     } catch (e: unknown) {
       setPageError(e instanceof Error ? e.message : 'Failed to create room');
@@ -58,81 +137,97 @@ export function RoomPage() {
   const isBusy = creatingRoom || joiningRoomId !== null;
 
   return (
-    <div className="screen screen--start">
-      <div className="hero">
-        <div className="hero__suits">♠ ♣ ♦ ♥</div>
-        <h1 className="hero__title">ទាំងឡែន</h1>
-        <p className="hero__latin" style={{ marginBottom: 20 }}>Hello, {playerName}</p>
+    <div
+      style={{
+        width: '100%',
+        height: '100%',
+        display: 'flex',
+        justifyContent: 'center',
+        padding: '20px 16px',
+        boxSizing: 'border-box',
+      }}
+    >
+      {/* Translucent room panel */}
+      <div
+        style={{
+          width: '100%',
+          maxWidth: 640,
+          display: 'flex',
+          flexDirection: 'column',
+          borderRadius: 28,
+          background: C.panel,
+          border: `2px solid ${C.panelEdge}`,
+          boxShadow: 'inset 0 2px 0 rgba(255,255,255,0.35), 0 10px 24px rgba(0,0,0,0.25)',
+          backdropFilter: 'blur(2px)',
+          overflow: 'hidden',
+        }}
+      >
+        {/* Grid of rooms */}
+        <div style={{ flex: 1, minHeight: 0, overflowY: 'auto', padding: 18 }}>
+          {rooms.length === 0 ? (
+            <p
+              style={{
+                fontFamily: FONT,
+                fontSize: 18,
+                color: '#fff',
+                textAlign: 'center',
+                marginTop: 40,
+                textShadow: '0 2px 3px rgba(0,0,0,0.4)',
+              }}
+            >
+              {loadingRooms ? 'Loading rooms…' : 'No open rooms — tap Create!'}
+            </p>
+          ) : (
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: 'repeat(2, 1fr)',
+                gap: 16,
+              }}
+            >
+              {rooms.map(r => (
+                <RoomCard
+                  key={r.roomId}
+                  room={r}
+                  joiningRoomId={joiningRoomId}
+                  isBusy={isBusy}
+                  onJoin={handleJoinRoom}
+                />
+              ))}
+            </div>
+          )}
 
-        {/* Create room */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 20, width: '100%' }}>
-          <select
-            value={maxPlayersChoice}
-            onChange={e => setMaxPlayersChoice(Number(e.target.value))}
-            disabled={isBusy}
-            style={{
-              background: 'rgba(255,255,255,0.1)',
-              color: '#fff',
-              border: '1px solid rgba(255,255,255,0.2)',
-              borderRadius: 8,
-              padding: '8px 10px',
-              fontSize: 13,
-              cursor: 'pointer',
-            }}
-          >
-            <option value={2}>2 players</option>
-            <option value={3}>3 players</option>
-            <option value={4}>4 players</option>
-          </select>
-          <button
-            className="btn btn--deal"
-            onClick={handleCreateRoom}
-            disabled={isBusy}
-            style={{ flex: 1 }}
-          >
-            {creatingRoom ? 'Creating…' : '+ Create Room'}
-          </button>
+          {pageError && (
+            <p style={{ color: '#FFE08A', fontFamily: FONT, textAlign: 'center', marginTop: 16 }}>{pageError}</p>
+          )}
         </div>
 
-        {/* Room list header */}
-        <div style={{
-          width: '100%', marginBottom: 8,
-          display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-        }}>
-          <span style={{ opacity: 0.6, fontSize: 13 }}>
-            Open Rooms {loadingRooms && <span style={{ opacity: 0.4 }}>↻</span>}
-          </span>
-          <button
-            className="btn"
-            onClick={fetchRooms}
-            disabled={loadingRooms || isBusy}
-            style={{ fontSize: 12, padding: '4px 10px' }}
-          >
-            {loadingRooms ? '…' : '↻ Refresh'}
-          </button>
+        {/* Create row — pinned at bottom of panel */}
+        <div
+          style={{
+            flexShrink: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: 14,
+            padding: '14px 18px',
+            borderTop: '2px solid rgba(255,255,255,0.25)',
+          }}
+        >
+          <CreateButton
+            label="Create"
+            disabled={isBusy}
+            onClick={() => setCreateModalOpen(true)}
+          />
         </div>
-
-        {/* Room list */}
-        {rooms.length === 0 ? (
-          <p style={{ opacity: 0.5, fontSize: 13, textAlign: 'center', marginTop: 12 }}>
-            {loadingRooms ? 'Loading rooms…' : 'No open rooms. Create one!'}
-          </p>
-        ) : (
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10, width: '100%' }}>
-            {rooms.map(r => (
-              <RoomCard
-                key={r.roomId}
-                room={r}
-                joiningRoomId={joiningRoomId}
-                isBusy={isBusy}
-                onJoin={handleJoinRoom}
-              />
-            ))}
-          </div>
-        )}
-
-        {pageError && <p style={{ color: '#f87171', marginTop: 12 }}>{pageError}</p>}
       </div>
+
+      <CreateRoomModal
+        open={createModalOpen}
+        creating={creatingRoom}
+        onCancel={() => setCreateModalOpen(false)}
+        onCreate={handleCreateRoom}
+      />
     </div>
   );
 }

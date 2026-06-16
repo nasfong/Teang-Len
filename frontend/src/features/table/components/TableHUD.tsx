@@ -7,10 +7,12 @@ interface TableHUDProps {
   isQueuedToLeave?: boolean;
   onQueueLeave?: () => void;
   onCancelLeave?: () => void;
+  /** Visual-only placeholders until the backend exposes these (see TablePage). */
+  gems?: string;
+  spectators?: number;
 }
 
 export function TableHUD({
-  playerName,
   roomId,
   playerCount,
   maxSeats,
@@ -18,48 +20,46 @@ export function TableHUD({
   isQueuedToLeave = false,
   onQueueLeave,
   onCancelLeave,
+  gems = '50K',
+  spectators = 0,
 }: TableHUDProps) {
-  const initial = (playerName ?? 'G')[0].toUpperCase();
-
   return (
     <div className="hud">
-      <div className="hud__left">
-        <div className="hud__avatar">{initial}</div>
-        <div className="hud__info">
-          <span className="hud__name">{playerName ?? 'Guest'}</span>
-          <span className="hud__coins">💰 0</span>
+      {/* Left: stat cluster — gems + spectators + signal */}
+      <div className="hud__stats">
+        <div className="hud__stat">
+          <span className="hud__stat-icon hud__stat-icon--gems">🪙</span>
+          <span className="hud__stat-val">{gems}</span>
+          <span className="hud__stat-label">GEMS</span>
+        </div>
+        <div className="hud__stat">
+          <span className="hud__stat-icon">👥</span>
+          <span className="hud__stat-val">{spectators}</span>
+          <span className="hud__stat-label">SPECTATORS</span>
+        </div>
+        <div className="hud__signal" title={`Room ${roomId.slice(0, 6).toUpperCase()} · ${playerCount}/${maxSeats}`}>
+          <span className="hud__signal-icon">📶</span>
+          <span className="hud__signal-label">SIGNAL</span>
         </div>
       </div>
 
+      {/* Right: leave button */}
       <div className="hud__right">
-        <span className="hud__room-code">{roomId.slice(0, 6).toUpperCase()}</span>
-        <span className="hud__sep" />
-        <span className="hud__room-count">👥 {playerCount}/{maxSeats}</span>
-
-        {isPlaying && (
+        {isPlaying ? (
           isQueuedToLeave ? (
-            <div className="hud__leave-queue">
-              <span className="hud__leave-queue-label">Leaving after match</span>
-              <button
-                className="hud__leave-cancel"
-                onClick={onCancelLeave}
-                aria-label="Cancel queued leave"
-              >
-                Cancel
-              </button>
-            </div>
+            <button className="hud__leave-btn hud__leave-btn--queued" onClick={onCancelLeave}>
+              LEAVING…
+            </button>
           ) : (
-            <button
-              className="hud__leave-btn"
-              onClick={onQueueLeave}
-              aria-label="Leave after current match"
-            >
-              Leave
+            <button className="hud__leave-btn" onClick={onQueueLeave}>
+              LEAVE
             </button>
           )
+        ) : (
+          <button className="hud__leave-btn" onClick={onQueueLeave}>
+            LEAVE
+          </button>
         )}
-
-        <button className="hud__settings" aria-label="Settings">⚙</button>
       </div>
     </div>
   );
