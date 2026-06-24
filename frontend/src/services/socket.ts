@@ -1,5 +1,6 @@
 import { io, Socket } from 'socket.io-client';
 import type { GameState } from '../game/types';
+import { getToken } from './http';
 
 const SOCKET_URL = (import.meta.env.VITE_SOCKET_URL as string | undefined) ?? 'http://localhost:4000';
 
@@ -101,7 +102,25 @@ class SocketService {
   readonly socket: Socket;
 
   constructor() {
-    this.socket = io(SOCKET_URL, { autoConnect: true });
+    // Connect only once authenticated. The `auth` callback runs on every
+    // (re)connection attempt and reads the latest JWT, so reconnects after a
+    // refresh or re-login always carry a valid token.
+    this.socket = io(SOCKET_URL, {
+      autoConnect: false,
+      auth: (cb: (data: { token: string | null }) => void) => cb({ token: getToken() }),
+    });
+  }
+
+  // ── Connection lifecycle ─────────────────────────────────────────────────
+
+  /** Open the socket with the current JWT (no-op if already connected). */
+  connectWithAuth(): void {
+    if (!this.socket.connected) this.socket.connect();
+  }
+
+  /** Close the socket (used on logout). */
+  disconnect(): void {
+    if (this.socket.connected) this.socket.disconnect();
   }
 
   // ── Client → Server emits ────────────────────────────────────────────────

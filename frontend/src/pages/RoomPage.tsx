@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLobbyStore } from '../store/lobbyStore';
 import { socketService } from '../services/socket';
-import { api } from '../services/api';
+import { roomApi } from '../services/roomApi';
 import { useRoomList } from '../features/room/hooks/useRoomList';
 import { RoomCard } from '../features/room/components/RoomCard';
 import { CreateRoomModal, type CreateRoomOptions } from '../features/room/components/CreateRoomModal';
@@ -26,6 +26,52 @@ const FONT = "'Lilita One', 'Fredoka', 'Comic Sans MS', cursive";
 
 const STROKE = (color: string, w = 2) =>
   `${-w}px ${-w}px 0 ${color}, ${w}px ${-w}px 0 ${color}, ${-w}px ${w}px 0 ${color}, ${w}px ${w}px 0 ${color}`;
+
+// ── Back button — floating, top-left, returns to Home ─────────────────────────
+function BackButton({ onClick }: { onClick: () => void }) {
+  const [pressed, setPressed] = useState(false);
+  return (
+    <button
+      type="button"
+      aria-label="Back to Home"
+      onClick={onClick}
+      onMouseDown={() => setPressed(true)}
+      onMouseUp={() => setPressed(false)}
+      onMouseLeave={() => setPressed(false)}
+      style={{
+        position: 'absolute',
+        top: 16,
+        left: 16,
+        zIndex: 50,
+        width: 46,
+        height: 46,
+        borderRadius: '50%',
+        border: `3px solid ${C.edge}`,
+        background: 'linear-gradient(180deg, #6CC3FF 0%, #2B7FC9 100%)',
+        boxShadow: pressed
+          ? 'inset 0 2px 4px rgba(0,0,0,0.3)'
+          : `0 4px 0 ${C.edge}, 0 6px 10px rgba(0,0,0,0.35)`,
+        transform: `translateY(${pressed ? 3 : 0}px)`,
+        transition: 'transform 100ms, box-shadow 100ms',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        cursor: 'pointer',
+        outline: 'none',
+      }}
+    >
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path
+          d="M15 5l-7 7 7 7"
+          stroke="#fff"
+          strokeWidth={3.5}
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    </button>
+  );
+}
 
 // ── Create button ─────────────────────────────────────────────────────────────
 const DEPTH = 6;
@@ -106,14 +152,18 @@ export function RoomPage() {
     navigate(`/table/${snapshot.roomId}`);
   }
 
-  // Only `maxPlayers` is persisted by the backend; roomName/gameMode/betAmount
-  // are UI-only until the backend gains fields for them.
+  // The owner is derived from the auth token on the backend; the socket emit
+  // still needs the local playerId (= user id) for room channel identity.
   async function handleCreateRoom(opts: CreateRoomOptions): Promise<void> {
     if (!playerId) return;
     setCreatingRoom(true);
     setPageError(null);
     try {
-      const snapshot = await api.createRoom(playerId, opts.maxPlayers);
+      const snapshot = await roomApi.create({
+        name: opts.roomName || 'Room',
+        betCoin: opts.betAmount,
+        maxPlayers: opts.maxPlayers,
+      });
       enterRoom(snapshot, playerId);
     } catch (e: unknown) {
       setPageError(e instanceof Error ? e.message : 'Failed to create room');
@@ -126,7 +176,7 @@ export function RoomPage() {
     setJoiningRoomId(targetRoomId);
     setPageError(null);
     try {
-      const snapshot = await api.joinRoom(targetRoomId, playerId);
+      const snapshot = await roomApi.join(targetRoomId);
       enterRoom(snapshot, playerId);
     } catch (e: unknown) {
       setPageError(e instanceof Error ? e.message : 'Failed to join room');
@@ -139,19 +189,26 @@ export function RoomPage() {
   return (
     <div
       style={{
+        position: 'relative',
         width: '100%',
         height: '100%',
         display: 'flex',
-        justifyContent: 'center',
-        padding: '20px 16px',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 14,
+        padding: '16px',
         boxSizing: 'border-box',
       }}
     >
+      <BackButton onClick={() => navigate('/home')} />
+
       {/* Translucent room panel */}
       <div
         style={{
           width: '100%',
           maxWidth: 640,
+          flex: 1,
+          minHeight: 0,
           display: 'flex',
           flexDirection: 'column',
           borderRadius: 28,

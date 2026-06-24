@@ -21,11 +21,12 @@ const C = {
 const FONT = "'Lilita One', 'Fredoka', 'Comic Sans MS', cursive";
 const DEPTH = 5;
 
-// Deterministic friendly-ish label derived from the real roomId (no fake data).
+// Prefer the room's own name; fall back to the host's name. The roomId is never
+// shown to users — it stays internal for routing/socket channels only.
 function roomLabel(room: RoomSnapshot): string {
+  if (room.name?.trim()) return room.name;
   const host = room.players.find(p => p.playerId === room.hostPlayerId);
-  if (host?.name) return `${host.name}'s Room`;
-  return `Room ${room.roomId.slice(0, 4).toUpperCase()}`;
+  return host?.name ? `${host.name}'s Room` : 'Room';
 }
 
 const SeatAvatar = () => (
@@ -141,6 +142,16 @@ export function RoomCard({ room, joiningRoomId, isBusy, onJoin }: RoomCardProps)
         }}
       >
         {roomLabel(room)}
+      </div>
+
+      {/* Bet coin + player count */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: FONT, fontSize: 15, color: C.accent, textShadow: `0 2px 2px rgba(0,0,0,0.35)` }}>
+          🪙 {room.betCoin.toLocaleString()}
+        </span>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 5, fontFamily: FONT, fontSize: 15, color: '#fff', textShadow: `0 2px 2px rgba(0,0,0,0.35)` }}>
+          👤 {filled}/{room.maxPlayers}
+        </span>
       </div>
 
       {/* Seat row */}

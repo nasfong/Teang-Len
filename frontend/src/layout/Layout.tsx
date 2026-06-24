@@ -1,13 +1,13 @@
 import { Outlet } from "react-router-dom";
 
 
-const Layout = () => {
+const Layout = ({ image }: { image: string }) => {
   return (
     <div
       style={{
         width: '100vw',
         height: '100vh',
-        backgroundImage: "url('/background.png')",
+        backgroundImage: `url('${image}')`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
         backgroundRepeat: 'no-repeat',

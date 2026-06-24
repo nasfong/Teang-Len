@@ -1,7 +1,6 @@
 import { Server, Socket } from "socket.io";
 import { roomStore } from "../rooms/roomStore";
 import { roomService } from "../services/roomService";
-import { playerService } from "../services/playerService";
 import { broadcastPlayerDisconnected, broadcastRoomUpdate } from "./emit";
 
 export function registerDisconnectHandler(io: Server, socket: Socket): void {
@@ -14,7 +13,6 @@ export function registerDisconnectHandler(io: Server, socket: Socket): void {
       const player = room.players.find((p) => p.socketId === socket.id);
       if (!player) continue;
 
-      playerService.setSocketId(player.playerId, null);
       roomService.markPlayerDisconnected(room.roomId, player.playerId);
 
       broadcastPlayerDisconnected(io, room.roomId, {

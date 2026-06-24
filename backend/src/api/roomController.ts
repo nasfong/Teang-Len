@@ -1,13 +1,16 @@
 import { Request, Response } from "express";
 import { roomService } from "../services/roomService";
+import { AuthedRequest } from "../modules/auth/auth.middleware";
+import { CreateRoomBody } from "../types";
 
 export function listRooms(_req: Request, res: Response): void {
   res.json({ ok: true, data: roomService.list() });
 }
 
 export function createRoom(req: Request, res: Response): void {
-  const { playerId, maxPlayers } = req.body as { playerId: string; maxPlayers: number };
-  const result = roomService.create(playerId, maxPlayers);
+  const userId = (req as AuthedRequest).userId!;
+  const { name, betCoin, maxPlayers } = req.body as Required<CreateRoomBody>;
+  const result = roomService.create(userId, { name, betCoin, maxPlayers });
 
   if (!result.ok) {
     res.status(result.code).json({ ok: false, error: result.error });
@@ -31,8 +34,8 @@ export function getRoom(req: Request, res: Response): void {
 
 export function joinRoom(req: Request, res: Response): void {
   const { roomId } = req.params;
-  const { playerId } = req.body as { playerId: string };
-  const result = roomService.join(roomId, playerId);
+  const userId = (req as AuthedRequest).userId!;
+  const result = roomService.join(roomId, userId);
 
   if (!result.ok) {
     res.status(result.code).json({ ok: false, error: result.error });
@@ -44,8 +47,8 @@ export function joinRoom(req: Request, res: Response): void {
 
 export function leaveRoom(req: Request, res: Response): void {
   const { roomId } = req.params;
-  const { playerId } = req.body as { playerId: string };
-  const result = roomService.leave(roomId, playerId);
+  const userId = (req as AuthedRequest).userId!;
+  const result = roomService.leave(roomId, userId);
 
   if (!result.ok) {
     res.status(result.code).json({ ok: false, error: result.error });

@@ -1,35 +1,50 @@
 import { v4 as uuidv4 } from "uuid";
-import { Player, Room, RoomSnapshot, PlayerSnapshot } from "../types";
+import { Player, Room, RoomSnapshot, PlayerSnapshot, PlayerStatus } from "../types";
 
 // ─────────────────────────────────────────────
 // Factories
 // ─────────────────────────────────────────────
 
-export function createRoom(hostPlayer: Player, maxPlayers: number): Room {
+export interface CreateRoomOptions {
+  name: string;
+  betCoin: number;
+  maxPlayers: number;
+}
+
+export function createRoom(hostPlayer: Player, opts: CreateRoomOptions): Room {
+  const now = Date.now();
   return {
     roomId:                 uuidv4(),
+    name:                   opts.name,
     hostPlayerId:           hostPlayer.playerId,
+    betCoin:                opts.betCoin,
     players:                [{ ...hostPlayer, seatIndex: 0 }],
     status:                 "waiting",
     gameState:              null,
     version:                0,
-    maxPlayers,
-    createdAt:              Date.now(),
-    updatedAt:              Date.now(),
+    maxPlayers:             opts.maxPlayers,
+    createdAt:              now,
+    updatedAt:              now,
     turnStartedAt:          null,
     turnDurationMs:         15_000,
     pendingLeavePlayerIds:  [],
   };
 }
 
-export function createPlayer(name: string): Player {
+// Build an in-room participant from an authenticated user's identity.
+export function createParticipant(
+  userId: string,
+  displayName: string,
+  seatIndex: number | null,
+  socketId: string | null = null,
+  status: PlayerStatus = "waiting",
+): Player {
   return {
-    playerId:       uuidv4(),
-    name:           name.trim(),
-    socketId:       null,
-    status:         "waiting",
-    seatIndex:      null,
-    isGuest:        true,
+    playerId:       userId,
+    name:           displayName,
+    socketId,
+    status,
+    seatIndex,
     connectedAt:    Date.now(),
     reconnectedAt:  null,
   };
@@ -52,7 +67,9 @@ export function toPlayerSnapshot(player: Player): PlayerSnapshot {
 export function toRoomSnapshot(room: Room): RoomSnapshot {
   return {
     roomId:                room.roomId,
+    name:                  room.name,
     hostPlayerId:          room.hostPlayerId,
+    betCoin:               room.betCoin,
     players:               room.players.map(toPlayerSnapshot),
     status:                room.status,
     gameState:             room.gameState,

@@ -1,34 +1,14 @@
 import { useState } from 'react';
 import { C, FONT, stroke } from './tokens';
-import { GemBarIcon, UsersIcon } from './icons';
 import { Avatar } from './Avatar';
 
 interface TopHUDProps {
   /** Whose turn it is right now — shown in the centre badge. */
   turnPlayerName: string;
-  /** Visual-only placeholders until the backend exposes balances. */
-  gems?: string;
-  spectators?: number;
   onLeave: () => void;
 }
 
-function Stat({ icon, value, label }: { icon: React.ReactNode; value: string; label: string }) {
-  return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-      {icon}
-      <div style={{ lineHeight: 1.05 }}>
-        <div style={{ fontFamily: FONT, fontSize: 15, color: '#fff', textShadow: '0 1px 2px rgba(0,0,0,0.6)' }}>
-          {value}
-        </div>
-        <div style={{ fontFamily: FONT, fontSize: 9, letterSpacing: 1, color: 'rgba(255,255,255,0.55)' }}>
-          {label}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-export function TopHUD({ turnPlayerName, gems = '50K', spectators = 30, onLeave }: TopHUDProps) {
+export function TopHUD({ turnPlayerName, onLeave }: TopHUDProps) {
   const [pressed, setPressed] = useState(false);
 
   return (
@@ -48,24 +28,8 @@ export function TopHUD({ turnPlayerName, gems = '50K', spectators = 30, onLeave 
         pointerEvents: 'none',
       }}
     >
-      {/* Left — stat pill */}
-      <div
-        style={{
-          pointerEvents: 'auto',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 16,
-          padding: '8px 16px',
-          borderRadius: 16,
-          background: C.panelDark,
-          border: '1.5px solid rgba(255,255,255,0.12)',
-          boxShadow: '0 4px 10px rgba(0,0,0,0.35)',
-        }}
-      >
-        <Stat icon={<GemBarIcon />} value={gems} label="GEMS" />
-        <div style={{ width: 1, height: 26, background: 'rgba(255,255,255,0.15)' }} />
-        <Stat icon={<UsersIcon />} value={String(spectators)} label="SPECTATORS" />
-      </div>
+      {/* Left — spacer to keep the turn badge centred */}
+      <div style={{ width: 90 }} />
 
       {/* Centre — current turn player */}
       <div

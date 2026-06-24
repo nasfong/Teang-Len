@@ -4,13 +4,15 @@
 
 export type PlayerStatus = "waiting" | "ready" | "playing" | "finished" | "disconnected";
 
+// A room participant — the in-room session for an authenticated user.
+// `playerId` is the user's account id (User.id); identity/wallet live in the
+// user/wallet modules, this shape only carries transient room session state.
 export interface Player {
-  playerId: string;
-  name: string;
+  playerId: string;             // === User.id
+  name: string;                 // User.displayName at join time
   socketId: string | null;
   status: PlayerStatus;
   seatIndex: number | null;     // 0-3 seat in the room
-  isGuest: boolean;
   connectedAt: number;
   reconnectedAt: number | null;
 }
@@ -23,7 +25,9 @@ export type RoomStatus = "waiting" | "starting" | "playing" | "finished";
 
 export interface Room {
   roomId: string;
-  hostPlayerId: string;
+  name: string;                       // display label chosen at creation
+  hostPlayerId: string;               // === host User.id
+  betCoin: number;                    // coin stake for the table (0 = free)
   players: Player[];                  // max 4
   status: RoomStatus;
   gameState: unknown;                 // opaque — backend never interprets this
@@ -40,21 +44,12 @@ export interface Room {
 // API request/response shapes (validated by Zod in routes)
 // ─────────────────────────────────────────────
 
-export interface CreateGuestPlayerBody {
-  name: string;
-}
-
+// Room creation body — the owner is derived from the authenticated user, not
+// passed in the body. Join/leave carry no body (also derived from the token).
 export interface CreateRoomBody {
-  playerId: string;
+  name: string;
+  betCoin: number;
   maxPlayers?: number;
-}
-
-export interface JoinRoomBody {
-  playerId: string;
-}
-
-export interface LeaveRoomBody {
-  playerId: string;
 }
 
 // ─────────────────────────────────────────────
@@ -143,7 +138,9 @@ export interface TurnTimeoutPayload {
 
 export interface RoomSnapshot {
   roomId: string;
+  name: string;
   hostPlayerId: string;
+  betCoin: number;
   players: PlayerSnapshot[];
   status: RoomStatus;
   gameState: unknown;

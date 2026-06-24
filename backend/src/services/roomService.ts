@@ -2,24 +2,30 @@ import { Room, Player, RoomSnapshot, ServiceResult } from "../types";
 import { roomStore } from "../rooms/roomStore";
 import {
   createRoom,
+  createParticipant,
   toRoomSnapshot,
   bumpVersion,
   nextAvailableSeat,
+  CreateRoomOptions,
 } from "../rooms/roomFactory";
-import { playerService } from "./playerService";
+import { userService } from "../modules/user/user.service";
 
 // ─────────────────────────────────────────────
 // Room service
+//
+// Identity comes from the user module (accounts); this service only manages
+// room lifecycle and never touches wallets directly.
 // ─────────────────────────────────────────────
 
 function create(
-  hostPlayerId: string,
-  maxPlayers: number
+  hostUserId: string,
+  opts: CreateRoomOptions
 ): ServiceResult<RoomSnapshot> {
-  const playerResult = playerService.getById(hostPlayerId);
-  if (!playerResult.ok) return playerResult;
+  const userResult = userService.getById(hostUserId);
+  if (!userResult.ok) return userResult;
 
-  const room = createRoom(playerResult.data, maxPlayers);
+  const host = createParticipant(userResult.data.id, userResult.data.displayName, 0);
+  const room = createRoom(host, opts);
   roomStore.set(room);
   return { ok: true, data: toRoomSnapshot(room) };
 }
@@ -38,7 +44,8 @@ function list(): RoomSnapshot[] {
 
 function join(
   roomId: string,
-  playerId: string
+  userId: string,
+  socketId: string | null = null
 ): ServiceResult<RoomSnapshot> {
   const room = roomStore.get(roomId);
   if (!room) return { ok: false, error: "Room not found", code: 404 };
@@ -47,20 +54,25 @@ function join(
   if (room.players.length >= room.maxPlayers)
     return { ok: false, error: "Room is full", code: 409 };
 
-  const alreadyIn = room.players.some((p) => p.playerId === playerId);
+  const alreadyIn = room.players.some((p) => p.playerId === userId);
   if (alreadyIn) return { ok: true, data: toRoomSnapshot(room) }; // idempotent
 
-  const playerResult = playerService.getById(playerId);
-  if (!playerResult.ok) return playerResult;
+  const userResult = userService.getById(userId);
+  if (!userResult.ok) return userResult;
 
   const seat = nextAvailableSeat(room);
   if (seat === null)
     return { ok: false, error: "No seats available", code: 409 };
 
-  const updatedPlayer: Player = { ...playerResult.data, seatIndex: seat, status: "waiting" };
+  const participant: Player = createParticipant(
+    userResult.data.id,
+    userResult.data.displayName,
+    seat,
+    socketId,
+  );
   const updated: Room = bumpVersion({
     ...room,
-    players: [...room.players, updatedPlayer],
+    players: [...room.players, participant],
   });
 
   roomStore.set(updated);

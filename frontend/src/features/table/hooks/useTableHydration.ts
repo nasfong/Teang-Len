@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../../../services/api';
+import { roomApi } from '../../../services/roomApi';
 import { socketService } from '../../../services/socket';
 import { useLobbyStore } from '../../../store/lobbyStore';
 import { useGameStore } from '../../../store/gameStore';
@@ -19,7 +19,7 @@ export function useTableHydration(roomIdParam: string | undefined): HydrationRes
 
   useEffect(() => {
     if (!roomIdParam || !playerId || room) return;
-    api.getRoom(roomIdParam)
+    roomApi.get(roomIdParam)
       .then(snapshot => {
         setRoom(snapshot);
         socketService.emitRoomJoin({ roomId: roomIdParam, playerId });
@@ -28,7 +28,7 @@ export function useTableHydration(roomIdParam: string | undefined): HydrationRes
       })
       .catch(() => {
         setHydrateError('Room not found. Redirecting…');
-        setTimeout(() => navigate('/room'), 1500);
+        setTimeout(() => navigate('/rooms'), 1500);
       });
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [roomIdParam, playerId]); // intentionally omits room — only runs until hydrated

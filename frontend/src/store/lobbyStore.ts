@@ -1,9 +1,6 @@
 import { create } from 'zustand';
 import type { RoomSnapshot } from '../services/api';
 
-const LS_ID   = 'tl_playerId';
-const LS_NAME = 'tl_playerName';
-
 // ─── Store interface ──────────────────────────────────────────────────────────
 
 interface LobbyStore {
@@ -23,13 +20,13 @@ interface LobbyStore {
 }
 
 // ─── Store ────────────────────────────────────────────────────────────────────
-// playerId + playerName are seeded from localStorage on first render.
-// This means RequireAuth guards pass immediately on refresh without a
-// bootstrap effect — no flash of the login page.
+// Network identity (playerId === authenticated user id) is populated by the auth
+// store after a session is restored or established — never persisted here. The
+// JWT (services/http.ts) is the only persisted credential.
 
 export const useLobbyStore = create<LobbyStore>((set, get) => ({
-  playerId:       localStorage.getItem(LS_ID),
-  playerName:     localStorage.getItem(LS_NAME),
+  playerId:       null,
+  playerName:     null,
   roomId:         null,
   room:           null,
   seatToPlayerId: {},
@@ -37,8 +34,6 @@ export const useLobbyStore = create<LobbyStore>((set, get) => ({
   pendingLeave:   false,
 
   setPlayer(playerId, name) {
-    localStorage.setItem(LS_ID, playerId);
-    localStorage.setItem(LS_NAME, name);
     set({ playerId, playerName: name });
   },
 
@@ -66,8 +61,6 @@ export const useLobbyStore = create<LobbyStore>((set, get) => ({
   },
 
   reset() {
-    localStorage.removeItem(LS_ID);
-    localStorage.removeItem(LS_NAME);
     set({
       playerId:       null,
       playerName:     null,

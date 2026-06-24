@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 
 // ── Design tokens (shared chunky blue identity) ───────────────────────────────
 const C = {
@@ -61,10 +62,23 @@ const KeyIcon = () => (
 const DEPTH = 6;
 
 const LoginPage = () => {
+  const navigate = useNavigate();
+  const { status, error: err, login, clearError } = useAuthStore();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [pressed, setPressed] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const busy = status === 'loading';
+
+  if (status === 'authenticated') return <Navigate to="/home" replace />;
+
+  async function handleSubmit(): Promise<void> {
+    const u = username.trim();
+    if (!u || !password || busy) return;
+    clearError();
+    const ok = await login(u, password);
+    if (ok) navigate('/home');
+  }
 
   return (
     <div
@@ -171,6 +185,8 @@ const LoginPage = () => {
           >
             <button
               type="button"
+              disabled={busy}
+              onClick={handleSubmit}
               onMouseDown={() => setPressed(true)}
               onMouseUp={() => setPressed(false)}
               onMouseEnter={() => setHovered(true)}
@@ -196,7 +212,8 @@ const LoginPage = () => {
                 ].join(', '),
                 transform: `translateY(${pressed ? DEPTH : hovered ? -1.5 : 0}px)`,
                 transition: 'transform 130ms cubic-bezier(0.34, 1.4, 0.64, 1)',
-                cursor: 'pointer',
+                cursor: busy ? 'default' : 'pointer',
+                opacity: busy ? 0.7 : 1,
                 outline: 'none',
                 color: '#fff',
                 fontFamily: FONT,
@@ -214,10 +231,16 @@ const LoginPage = () => {
                 `,
               }}
             >
-              Log In
+              {busy ? 'Please wait…' : 'Log In'}
             </button>
           </div>
         </div>
+
+        {err && (
+          <p style={{ margin: '16px 0 0', textAlign: 'center', fontFamily: FONT, fontSize: 14, color: '#FFE08A' }}>
+            {err}
+          </p>
+        )}
 
         {/* Navigate to Register */}
         <p

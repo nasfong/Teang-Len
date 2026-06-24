@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, Navigate, useNavigate } from 'react-router-dom';
+import { useAuthStore } from '../store/authStore';
 
 // ── Design tokens (shared chunky blue identity) ───────────────────────────────
 const C = {
@@ -61,11 +62,31 @@ const KeyIcon = () => (
 const DEPTH = 6;
 
 const RegisterPage = () => {
+  const navigate = useNavigate();
+  const { status, error: serverErr, register, clearError } = useAuthStore();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
   const [pressed, setPressed] = useState(false);
   const [hovered, setHovered] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const busy = status === 'loading';
+  const err = formError ?? serverErr;
 
+  if (status === 'authenticated') return <Navigate to="/home" replace />;
+
+  async function handleSubmit(): Promise<void> {
+    const u = username.trim();
+    if (!u || !password || busy) return;
+    setFormError(null);
+    clearError();
+    if (password !== confirm) {
+      setFormError('Passwords do not match');
+      return;
+    }
+    const ok = await register(u, password);
+    if (ok) navigate('/home');
+  }
 
   return (
     <div
@@ -139,7 +160,7 @@ const RegisterPage = () => {
         </div>
 
         {/* Password */}
-        <div style={{ ...ICON_WRAP_STYLE, marginBottom: 32 }}>
+        <div style={{ ...ICON_WRAP_STYLE, marginBottom: 20 }}>
           <span style={ICON_STYLE}>
             <KeyIcon />
           </span>
@@ -150,6 +171,23 @@ const RegisterPage = () => {
             placeholder="Password"
             value={password}
             onChange={e => setPassword(e.target.value)}
+            style={INPUT_STYLE}
+          />
+        </div>
+
+        {/* Confirm Password */}
+        <div style={{ ...ICON_WRAP_STYLE, marginBottom: 32 }}>
+          <span style={ICON_STYLE}>
+            <KeyIcon />
+          </span>
+          <input
+            id="confirm"
+            className="register-input"
+            type="password"
+            placeholder="Confirm password"
+            value={confirm}
+            onChange={e => setConfirm(e.target.value)}
+            onKeyDown={e => { if (e.key === 'Enter') void handleSubmit(); }}
             style={INPUT_STYLE}
           />
         </div>
@@ -172,6 +210,8 @@ const RegisterPage = () => {
           >
             <button
               type="button"
+              disabled={busy}
+              onClick={handleSubmit}
               onMouseDown={() => setPressed(true)}
               onMouseUp={() => setPressed(false)}
               onMouseEnter={() => setHovered(true)}
@@ -197,7 +237,8 @@ const RegisterPage = () => {
                 ].join(', '),
                 transform: `translateY(${pressed ? DEPTH : hovered ? -1.5 : 0}px)`,
                 transition: 'transform 130ms cubic-bezier(0.34, 1.4, 0.64, 1)',
-                cursor: 'pointer',
+                cursor: busy ? 'default' : 'pointer',
+                opacity: busy ? 0.7 : 1,
                 outline: 'none',
                 color: '#fff',
                 fontFamily: FONT,
@@ -215,10 +256,16 @@ const RegisterPage = () => {
                 `,
               }}
             >
-              Sign Up
+              {busy ? 'Please wait…' : 'Sign Up'}
             </button>
           </div>
         </div>
+
+        {err && (
+          <p style={{ margin: '16px 0 0', textAlign: 'center', fontFamily: FONT, fontSize: 14, color: '#FFE08A' }}>
+            {err}
+          </p>
+        )}
 
         {/* Navigate to Login */}
         <p

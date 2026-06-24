@@ -8,7 +8,6 @@ import {
   SocketRoomCancelQueueLeaveSchema,
 } from "../types/schemas";
 import { roomService } from "../services/roomService";
-import { playerService } from "../services/playerService";
 import { parsePayload } from "./parsePayload";
 import { broadcastRoomUpdate, emitError } from "./emit";
 
@@ -23,20 +22,18 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     // Attach socket to the room channel
     void socket.join(roomId);
 
-    // Update player's socketId
-    playerService.setSocketId(playerId, socket.id);
-
-    // Reconnect path: player already exists in room
     const existing = roomService.getSnapshot(roomId);
-    if (existing.ok) {
-      const alreadyInRoom = existing.data.players.some((p) => p.playerId === playerId);
-      if (alreadyInRoom) {
-        roomService.reconnectPlayer(roomId, playerId, socket.id);
-      }
+    if (!existing.ok) {
+      emitError(socket, existing.error);
+      return;
     }
 
-    // Ensure player is in the room (idempotent join)
-    const result = roomService.join(roomId, playerId);
+    const alreadyInRoom = existing.data.players.some((p) => p.playerId === playerId);
+    // Reconnect if already seated; otherwise join with this socket attached.
+    const result = alreadyInRoom
+      ? roomService.reconnectPlayer(roomId, playerId, socket.id)
+      : roomService.join(roomId, playerId, socket.id);
+
     if (!result.ok) {
       emitError(socket, result.error);
       return;
@@ -62,7 +59,6 @@ export function registerRoomHandlers(io: Server, socket: Socket): void {
     }
 
     void socket.leave(roomId);
-    playerService.setSocketId(playerId, null);
 
     const result = roomService.leave(roomId, playerId);
     if (!result.ok) {

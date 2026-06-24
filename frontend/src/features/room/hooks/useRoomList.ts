@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { socketService, SERVER_EVENTS } from '../../../services/socket';
-import { api } from '../../../services/api';
+import { roomApi } from '../../../services/roomApi';
 import type { RoomSnapshot } from '../../../services/api';
 
 const POLL_INTERVAL_MS = 5000;
@@ -18,7 +18,7 @@ export function useRoomList(): RoomListResult {
   const fetchRooms = useCallback(async () => {
     setLoadingRooms(true);
     try {
-      const list = await api.listRooms();
+      const list = await roomApi.list();
       setRooms(list);
     } catch {
       // silent — user can refresh manually
@@ -30,7 +30,7 @@ export function useRoomList(): RoomListResult {
   // Initial fetch + periodic poll
   useEffect(() => {
     let active = true;
-    api.listRooms()
+    roomApi.list()
       .then(list => { if (active) setRooms(list); })
       .catch(() => {});
     const timer = setInterval(() => { if (active) fetchRooms(); }, POLL_INTERVAL_MS);

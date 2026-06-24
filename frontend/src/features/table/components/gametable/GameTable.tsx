@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useGameStore } from '../../../../store/gameStore';
 import { useLobbyStore } from '../../../../store/lobbyStore';
+import { useAuthStore } from '../../../../store/authStore';
 import { useSeatMapping } from '../../hooks/useSeatMapping';
 import { useTurnTimer } from '../../hooks/useTurnTimer';
 import { validatePlay } from '../../../../game/engine/validation';
@@ -12,9 +13,7 @@ import { OpponentSeat } from './OpponentSeat';
 import { FeltTable } from './FeltTable';
 import { ActionButtons } from './ActionButtons';
 import { PlayerHand } from './PlayerHand';
-
-// Visual-only coin balances per seat (no backend balances yet).
-const COINS: Record<number, string> = { 0: '25.0M', 1: '20.1M', 2: '15.0M', 3: '18.4M' };
+import { LocalPlayerSeat } from './LocalPlayerSeat';
 
 interface GameTableProps {
   onLeave: () => void;
@@ -33,6 +32,12 @@ export function GameTable({ onLeave }: GameTableProps) {
   const skipCurrentTurn = useGameStore(s => s.skipCurrentTurn);
 
   const localSeatIndex = useLobbyStore(s => s.localSeatIndex);
+  const isHost = useLobbyStore(s => s.playerId !== null && s.room?.hostPlayerId === s.playerId);
+
+  // Local player profile comes from the auth store (single source of truth);
+  // selectors keep the seat in sync when the username or wallet changes.
+  const localName = useAuthStore(s => s.user?.displayName ?? s.user?.username ?? '');
+  const localCoin = useAuthStore(s => s.user?.wallet.coin ?? 0);
 
   const numPlayers = game?.players.length ?? 4;
   const { seatBottom, seatRight, seatTop, seatLeft } = useSeatMapping(localSeatIndex, numPlayers);
@@ -86,7 +91,8 @@ export function GameTable({ onLeave }: GameTableProps) {
         backgroundPosition: 'center',
       }}
     >
-      <TopHUD turnPlayerName={currentPlayerName} onLeave={onLeave} />
+      {/* TopHUD is hidden during active play; shown again on the results screen so Leave stays reachable. */}
+      {isEndgame && <TopHUD turnPlayerName={currentPlayerName} onLeave={onLeave} />}
 
       {/* Top opponent */}
       <div style={{ position: 'absolute', top: 66, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>
@@ -96,7 +102,6 @@ export function GameTable({ onLeave }: GameTableProps) {
           isCurrentTurn={isTurnOf(seatTop)}
           secondsLeft={isTurnOf(seatTop) ? secondsLeft : null}
           isUrgent={isUrgent}
-          coins={seatTop !== null ? COINS[seatTop] : undefined}
         />
       </div>
 
@@ -109,7 +114,6 @@ export function GameTable({ onLeave }: GameTableProps) {
             isCurrentTurn={isTurnOf(seatLeft)}
             secondsLeft={isTurnOf(seatLeft) ? secondsLeft : null}
             isUrgent={isUrgent}
-            coins={seatLeft !== null ? COINS[seatLeft] : undefined}
           />
         </div>
       )}
@@ -123,7 +127,6 @@ export function GameTable({ onLeave }: GameTableProps) {
             isCurrentTurn={isTurnOf(seatRight)}
             secondsLeft={isTurnOf(seatRight) ? secondsLeft : null}
             isUrgent={isUrgent}
-            coins={seatRight !== null ? COINS[seatRight] : undefined}
           />
         </div>
       )}
@@ -156,6 +159,21 @@ export function GameTable({ onLeave }: GameTableProps) {
 
       {/* Endgame overlay */}
       {isEndgame && <RankingsOverlay rankedNames={game.rankedOrder.map(id => game.players[id].name)} />}
+
+      {/* Bottom-left — local player profile (front of screen) */}
+      <div style={{ position: 'absolute', bottom: 18, left: 18, zIndex: 16 }}>
+        <LocalPlayerSeat
+          name={localName || me.name}
+          isCurrentTurn={isPlayerTurn}
+          secondsLeft={isPlayerTurn ? secondsLeft : null}
+          isUrgent={isUrgent}
+          cardCount={me.hand.length}
+          rank={me.rank}
+          skipped={me.skipped}
+          isHost={isHost}
+          coin={localCoin}
+        />
+      </div>
 
       {/* Bottom — local hand */}
       <div style={{ position: 'absolute', bottom: 6, left: 0, right: 0, zIndex: 15 }}>

@@ -9,8 +9,6 @@ interface OpponentSeatProps {
   isCurrentTurn: boolean;
   secondsLeft?: number | null;
   isUrgent?: boolean;
-  /** Visual-only coin balance placeholder. */
-  coins?: string;
 }
 
 const RANK_LABEL: Record<number, string> = { 1: '🥇 1st', 2: '🥈 2nd', 3: '🥉 3rd', 4: '🏅 4th' };
@@ -45,7 +43,6 @@ export function OpponentSeat({
   isCurrentTurn,
   secondsLeft = null,
   isUrgent = false,
-  coins,
 }: OpponentSeatProps) {
   // Empty / closed seat
   if (!player) {
@@ -127,34 +124,6 @@ export function OpponentSeat({
       >
         {player.name}
       </div>
-
-      {/* Coins */}
-      {coins && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 4,
-            padding: '2px 10px',
-            borderRadius: 11,
-            background: C.panelDark,
-            fontFamily: FONT,
-            fontSize: 12,
-            color: C.coin,
-          }}
-        >
-          <span
-            style={{
-              width: 12,
-              height: 12,
-              borderRadius: '50%',
-              background: `radial-gradient(circle at 35% 30%, #fff6c0, ${C.coin})`,
-              border: `1px solid ${C.goldDeep}`,
-            }}
-          />
-          {coins}
-        </div>
-      )}
 
       {/* Cards held / status */}
       {finished || player.skipped ? (

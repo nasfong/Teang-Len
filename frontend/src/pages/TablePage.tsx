@@ -34,7 +34,7 @@ export function TablePage() {
       const { pendingLeave } = useLobbyStore.getState();
       if (pendingLeave) {
         resetGame();
-        navigate('/room');
+        navigate('/rooms');
       } else {
         clearGameState();
       }
@@ -47,10 +47,10 @@ export function TablePage() {
       socketService.emitRoomLeave({ roomId: roomIdParam, playerId });
     }
     resetGame();
-    navigate('/room');
+    navigate('/rooms');
   }
 
-  if (!roomIdParam) return <Navigate to="/room" replace />;
+  if (!roomIdParam) return <Navigate to="/rooms" replace />;
 
   if (!room && !hydrateError) {
     return (

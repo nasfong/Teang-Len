@@ -4,25 +4,11 @@ import { z } from "zod";
 // REST body schemas
 // ─────────────────────────────────────────────
 
-export const CreateGuestPlayerSchema = z.object({
-  name: z
-    .string()
-    .min(1, "Name is required")
-    .max(24, "Name must be 24 characters or fewer")
-    .trim(),
-});
-
+// Room owner comes from the authenticated user (Bearer token), never the body.
 export const CreateRoomSchema = z.object({
-  playerId:   z.string().uuid("Invalid playerId"),
+  name:       z.string().min(1, "Room name is required").max(24, "Room name must be 24 characters or fewer").trim(),
+  betCoin:    z.number().int().min(0, "Bet cannot be negative"),
   maxPlayers: z.number().int().min(2).max(4).default(4),
-});
-
-export const JoinRoomSchema = z.object({
-  playerId: z.string().uuid("Invalid playerId"),
-});
-
-export const LeaveRoomSchema = z.object({
-  playerId: z.string().uuid("Invalid playerId"),
 });
 
 // ─────────────────────────────────────────────
