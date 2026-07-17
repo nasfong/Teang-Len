@@ -88,6 +88,48 @@ function canAfford(userId: string, currency: Currency, amount: number): boolean 
   return wallet !== undefined && wallet[currency] >= amount;
 }
 
+// ─────────────────────────────────────────────
+// Domain money operations
+//
+// Higher layers (room create/join) express intent through these named helpers
+// rather than calling debit/credit with magic arguments. Refunds, winner
+// payouts and daily rewards will each earn a sibling here and route through the
+// same credit()/debit() core — keeping every coin movement in one module.
+// ─────────────────────────────────────────────
+
+/**
+ * Charge a table's entry fee against the coin balance. A 0 stake (free table)
+ * is a no-op that simply returns the current balances. Insufficient funds map
+ * to a 402 with a player-friendly message.
+ */
+function chargeEntryFee(userId: string, amount: number): ServiceResult<WalletBalances> {
+  if (!Number.isInteger(amount) || amount < 0) {
+    return { ok: false, error: "Invalid entry fee", code: 400 };
+  }
+  if (amount === 0) return getBalances(userId);
+
+  const result = debit(userId, "coin", amount);
+  if (!result.ok) {
+    // Surface the affordability failure as a friendly, HTTP-appropriate error.
+    if (result.code === 409) return { ok: false, error: "Not enough coins.", code: 402 };
+    return result;
+  }
+  return { ok: true, data: toBalances(result.data) };
+}
+
+/**
+ * Pay match winnings (the pot) into a player's coin balance. A non-positive
+ * amount is a no-op that returns current balances, so free tables and empty
+ * pots settle cleanly. Winner payouts, refunds and rewards all land here.
+ */
+function awardWinnings(userId: string, amount: number): ServiceResult<WalletBalances> {
+  if (amount <= 0) return getBalances(userId);
+
+  const result = credit(userId, "coin", amount);
+  if (!result.ok) return result;
+  return { ok: true, data: toBalances(result.data) };
+}
+
 export const walletService = {
   createForUser,
   get,
@@ -96,4 +138,6 @@ export const walletService = {
   credit,
   debit,
   canAfford,
+  chargeEntryFee,
+  awardWinnings,
 };

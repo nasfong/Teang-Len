@@ -6,6 +6,7 @@ import {
   SocketGameSkipSchema,
 } from "../types/schemas";
 import { roomService } from "../services/roomService";
+import { walletService } from "../modules/wallet/wallet.service";
 import { parsePayload } from "./parsePayload";
 import {
   broadcastRoomUpdate,
@@ -41,6 +42,23 @@ export interface GamePlayPayloadExtended {
   gameOver?:        boolean;
   rankings?:        { playerId: string; rank: number }[];
   currentPlayerId?: string;   // next player's turn
+}
+
+// Award the match pot to the 1st-place finisher. Orchestration lives here (it
+// reads room stake + roster and calls walletService) so roomService stays free
+// of wallet concerns and all coin math stays inside walletService.
+function settlePot(roomId: string, rankings: { playerId: string; rank: number }[]): void {
+  const snapshot = roomService.getSnapshot(roomId);
+  if (!snapshot.ok) return;
+
+  const { betCoin, players } = snapshot.data;
+  if (betCoin <= 0) return; // free table — nothing staked
+
+  const winner = rankings.find((r) => r.rank === 1);
+  if (!winner) return;
+
+  const pot = betCoin * players.length;
+  walletService.awardWinnings(winner.playerId, pot);
 }
 
 export function registerGameHandlers(io: Server, socket: Socket): void {
@@ -117,6 +135,12 @@ export function registerGameHandlers(io: Server, socket: Socket): void {
 
     // Game over signal
     if (payload.gameOver && payload.rankings) {
+      // Settle the pot before announcing the end so the follow-up wallet refresh
+      // (triggered by game:end on each client) reads the awarded balance. Every
+      // seated player paid `betCoin` on entry, so the pot is betCoin × players
+      // and the 1st-place finisher takes it all. Free tables (betCoin 0) no-op.
+      settlePot(roomId, payload.rankings);
+
       broadcastGameEnd(io, roomId, {
         roomId,
         rankings:  payload.rankings,
