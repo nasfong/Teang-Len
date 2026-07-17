@@ -33,6 +33,7 @@ export function GameTable({ onLeave }: GameTableProps) {
 
   const localSeatIndex = useLobbyStore(s => s.localSeatIndex);
   const isHost = useLobbyStore(s => s.playerId !== null && s.room?.hostPlayerId === s.playerId);
+  const betCoin = useLobbyStore(s => s.room?.betCoin ?? 0);
 
   // Local player profile comes from the auth store (single source of truth);
   // selectors keep the seat in sync when the username or wallet changes.
@@ -93,6 +94,28 @@ export function GameTable({ onLeave }: GameTableProps) {
     >
       {/* TopHUD is hidden during active play; shown again on the results screen so Leave stays reachable. */}
       {isEndgame && <TopHUD turnPlayerName={currentPlayerName} onLeave={onLeave} />}
+
+      {/* Room stake — subtle, top-left, so players know what's on the table. */}
+      {betCoin > 0 && (
+        <div
+          style={{
+            position: 'absolute',
+            top: 12,
+            left: 14,
+            zIndex: 12,
+            padding: '6px 12px',
+            borderRadius: 12,
+            background: 'rgba(8,16,22,0.55)',
+            fontFamily: FONT,
+            fontSize: 13,
+            color: C.coin,
+            textShadow: stroke(C.textStroke, 1.2),
+            pointerEvents: 'none',
+          }}
+        >
+          BET · 🪙 {betCoin.toLocaleString()}
+        </div>
+      )}
 
       {/* Top opponent */}
       <div style={{ position: 'absolute', top: 66, left: '50%', transform: 'translateX(-50%)', zIndex: 10 }}>

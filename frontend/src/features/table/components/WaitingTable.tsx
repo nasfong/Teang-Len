@@ -151,17 +151,34 @@ export function WaitingTable({
           zIndex: 20,
         }}
       >
-        <div
-          style={{
-            padding: '8px 16px',
-            borderRadius: 14,
-            background: C.panelDark,
-            fontFamily: FONT,
-            fontSize: 14,
-            color: '#fff',
-          }}
-        >
-          ROOM · {playerCount}/{maxSeats}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div
+            style={{
+              padding: '8px 16px',
+              borderRadius: 14,
+              background: C.panelDark,
+              fontFamily: FONT,
+              fontSize: 14,
+              color: '#fff',
+            }}
+          >
+            ROOM · {playerCount}/{maxSeats}
+          </div>
+          {room && room.betCoin > 0 && (
+            <div
+              style={{
+                padding: '8px 14px',
+                borderRadius: 14,
+                background: C.panelDark,
+                fontFamily: FONT,
+                fontSize: 14,
+                color: C.gold,
+                textShadow: stroke(C.textStroke, 1.2),
+              }}
+            >
+              BET · 🪙 {room.betCoin.toLocaleString()}
+            </div>
+          )}
         </div>
         <LeaveButton onClick={onLeave} />
       </div>

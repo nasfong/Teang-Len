@@ -10,4 +10,4 @@ export type { PublicUser, WalletBalances, AuthResult, MeResult } from './authApi
 export { walletApi } from './walletApi';
 
 export { roomApi } from './roomApi';
-export type { RoomSnapshot, PlayerSnapshot, CreateRoomInput } from './roomApi';
+export type { RoomSnapshot, PlayerSnapshot, CreateRoomInput, RoomEntryResult } from './roomApi';

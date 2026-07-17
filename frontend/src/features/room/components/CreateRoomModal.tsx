@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useAuthStore } from '../../../store/authStore';
 
 // ── Cartoon design tokens ─────────────────────────────────────────────────────
 const C = {
@@ -159,10 +160,10 @@ const Label = ({ children }: { children: React.ReactNode }) => (
 );
 
 // ── Modal ─────────────────────────────────────────────────────────────────────
+// Every field is persisted by the backend: `betAmount` becomes the room's
+// `betCoin` stake and is charged against the host's wallet on create.
 export interface CreateRoomOptions {
-  /** Sent to the backend (the only persisted field). */
   maxPlayers: number;
-  /** UI-only for now — backend has no field for these yet. */
   roomName: string;
   betAmount: number;
 }
@@ -179,6 +180,10 @@ export function CreateRoomModal({ open, creating, defaultName, onCancel, onCreat
   const [roomName, setRoomName] = useState(defaultName ?? '');
   const [betAmount, setBetAmount] = useState(5000);
   const [maxPlayers, setMaxPlayers] = useState(4);
+
+  // Live coin balance — the host must be able to cover the stake they set.
+  const coin = useAuthStore(s => s.user?.wallet.coin ?? 0);
+  const unaffordable = betAmount > coin;
 
   if (!open) return null;
 
@@ -297,6 +302,13 @@ export function CreateRoomModal({ open, creating, defaultName, onCancel, onCreat
           </span>
         </div>
 
+        {/* Live balance + affordability hint */}
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end', gap: 8, marginBottom: 18 }}>
+          <span style={{ fontFamily: FONT, fontSize: 13, color: unaffordable ? '#FFB3AC' : 'rgba(255,255,255,0.85)', textShadow: STROKE(C.edge, 1.2) }}>
+            {unaffordable ? 'Not enough coins' : 'Balance'}: 🪙 {coin.toLocaleString()}
+          </span>
+        </div>
+
         {/* Max players */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 14, marginBottom: 26 }}>
           <div style={{ width: 86 }}>
@@ -317,7 +329,7 @@ export function CreateRoomModal({ open, creating, defaultName, onCancel, onCreat
           <PillButton
             label={creating ? 'Creating…' : 'Create'}
             variant="green"
-            disabled={creating}
+            disabled={creating || unaffordable}
             onClick={() => onCreate({ maxPlayers, roomName: roomName.trim(), betAmount })}
           />
         </div>

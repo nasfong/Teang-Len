@@ -26,6 +26,7 @@ interface AuthStore {
   logout(): void;
   restoreSession(): Promise<void>;
   refreshWallet(): Promise<void>;
+  setWallet(wallet: WalletBalances): void;
   clearError(): void;
 }
 
@@ -107,6 +108,12 @@ export const useAuthStore = create<AuthStore>((set, get) => ({
     } catch {
       // non-fatal
     }
+  },
+
+  // Apply authoritative balances returned by a mutating call (room entry today;
+  // payouts/refunds later) so every wallet readout updates without a refetch.
+  setWallet(wallet) {
+    set(s => (s.user ? { user: { ...s.user, wallet } } : {}));
   },
 
   clearError() {

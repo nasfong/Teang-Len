@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useLobbyStore } from '../store/lobbyStore';
+import { useAuthStore } from '../store/authStore';
 import { socketService } from '../services/socket';
 import { roomApi } from '../services/roomApi';
 import { useRoomList } from '../features/room/hooks/useRoomList';
@@ -133,6 +134,7 @@ function CreateButton({ label, disabled, onClick }: { label: string; disabled: b
 export function RoomPage() {
   const navigate = useNavigate();
   const { playerId, roomId: currentRoomId, setRoom } = useLobbyStore();
+  const setWallet = useAuthStore(s => s.setWallet);
   const { rooms, loadingRooms } = useRoomList();
 
   const [joiningRoomId, setJoiningRoomId] = useState<string | null>(null);
@@ -159,12 +161,13 @@ export function RoomPage() {
     setCreatingRoom(true);
     setPageError(null);
     try {
-      const snapshot = await roomApi.create({
+      const { room, wallet } = await roomApi.create({
         name: opts.roomName || 'Room',
         betCoin: opts.betAmount,
         maxPlayers: opts.maxPlayers,
       });
-      enterRoom(snapshot, playerId);
+      setWallet(wallet); // stake was charged server-side — reflect the new balance everywhere
+      enterRoom(room, playerId);
     } catch (e: unknown) {
       setPageError(e instanceof Error ? e.message : 'Failed to create room');
       setCreatingRoom(false);
@@ -176,8 +179,9 @@ export function RoomPage() {
     setJoiningRoomId(targetRoomId);
     setPageError(null);
     try {
-      const snapshot = await roomApi.join(targetRoomId);
-      enterRoom(snapshot, playerId);
+      const { room, wallet } = await roomApi.join(targetRoomId);
+      setWallet(wallet); // entry fee was charged server-side — reflect the new balance everywhere
+      enterRoom(room, playerId);
     } catch (e: unknown) {
       setPageError(e instanceof Error ? e.message : 'Failed to join room');
       setJoiningRoomId(null);

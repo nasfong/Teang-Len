@@ -76,6 +76,12 @@ export default function App() {
       },
     );
 
+    // Match settled server-side (winner took the pot) — pull authoritative
+    // balances so every client's coin display reflects the payout/loss.
+    socket.on(SERVER_EVENTS.GAME_END, () => {
+      void useAuthStore.getState().refreshWallet();
+    });
+
     socket.on(SERVER_EVENTS.ROOM_UPDATE, ({ room }: { room: RoomSnapshot }) => {
       const stillInRoom = room.players.some(p => p.playerId === playerId);
       const { roomId: currentRoomId } = useLobbyStore.getState();
@@ -96,6 +102,7 @@ export default function App() {
     return () => {
       socket.off('connect');
       socket.off(SERVER_EVENTS.GAME_UPDATE);
+      socket.off(SERVER_EVENTS.GAME_END);
       socket.off(SERVER_EVENTS.ROOM_UPDATE);
     };
   }, [status, playerId, syncFromServer, setRoom, resetGame, navigate]);

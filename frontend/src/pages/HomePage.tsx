@@ -1,6 +1,7 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Header } from '../components/Header';
+import { useAuthStore } from '../store/authStore';
 
 
 // ── Footer design tokens ──────────────────────────────────────────────────────
@@ -164,6 +165,14 @@ const Footer = ({ onPlay }: { onPlay: () => void }) => {
 
 export default function HomePage() {
   const navigate = useNavigate();
+  const refreshWallet = useAuthStore(s => s.refreshWallet);
+
+  // Pull the authoritative balance on landing so the Header's coins are always
+  // current (e.g. after leaving a room/game). The Header itself reads the wallet
+  // reactively from the auth store — this only keeps the source fresh.
+  useEffect(() => {
+    void refreshWallet();
+  }, [refreshWallet]);
 
   // The shared Header sources its own profile data from the auth store.
   return (
